@@ -97,25 +97,28 @@ public static class Pickables
             if (!__instance.m_nview.IsValid()) return false;
             if (_ModEnabled.Value is Toggle.Off) return true;
             PickableTypes type = GetPickableType(__instance.name);
+            
+            float farmingLevel = GetSkillLevel.GetFarmingSkillLevel();
+            float foragingLevel = GetSkillLevel.GetForagingSkillLevel();
 
             if (type is PickableTypes.None) return true;
             
             switch (SeasonKeys.season)
             {
                 case SeasonKeys.Seasons.Spring:
-                    if (_PickSpring.Value.HasFlagFast(type)) return SetValueByType(type, __instance, SeasonKeys.season);
+                    if (_PickSpring.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value || foragingLevel >= _LevelByPass.Value) return SetValueByType(type, __instance, SeasonKeys.season);
                     character.Message(MessageHud.MessageType.Center, _PickSpringMessage.Value);
                     return false;
                 case SeasonKeys.Seasons.Summer:
-                    if (_PickSummer.Value.HasFlagFast(type)) return SetValueByType(type, __instance, SeasonKeys.season);
+                    if (_PickSummer.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value || foragingLevel >= _LevelByPass.Value) return SetValueByType(type, __instance, SeasonKeys.season);
                     character.Message(MessageHud.MessageType.Center, _PickSummerMessage.Value);
                     return false;
                 case SeasonKeys.Seasons.Fall:
-                    if (_PickFall.Value.HasFlagFast(type)) return SetValueByType(type, __instance, SeasonKeys.season);
+                    if (_PickFall.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value || foragingLevel >= _LevelByPass.Value) return SetValueByType(type, __instance, SeasonKeys.season);
                     character.Message(MessageHud.MessageType.Center, _PickFallMessage.Value);
                     return false;
                 case SeasonKeys.Seasons.Winter:
-                    if (_PickWinter.Value.HasFlagFast(type)) return SetValueByType(type, __instance, SeasonKeys.season);
+                    if (_PickWinter.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value || foragingLevel >= _LevelByPass.Value) return SetValueByType(type, __instance, SeasonKeys.season);
                     character.Message(MessageHud.MessageType.Center, _PickWinterMessage.Value);
                     return false;
             }

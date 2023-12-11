@@ -111,8 +111,10 @@
     <ItemGroup>
         <Compile Include="Plugin.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
+        <Compile Include="Tweaks\BeeHivePatch.cs" />
         <Compile Include="Tweaks\Destructible.cs" />
         <Compile Include="Tweaks\Farming.cs" />
+        <Compile Include="Tweaks\GetSkill.cs" />
         <Compile Include="Tweaks\Pickables.cs" />
         <Compile Include="Tweaks\SeasonKeys.cs" />
         <Compile Include="VersionHandshake.cs" />
@@ -127,14 +129,11 @@
         <Content Include="Libs\ServerSync.dll">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
-        <Content Include="LICENSE.md" />
-        <Content Include="README.md" />
         <EmbeddedResource Include="translations\English.yml" />
         <Content Include="UpdateManifest.ps1" />
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.18.2" />
-        <PackageReference Include="YamlDotNet" Version="13.1.0" />
     </ItemGroup>
     <ItemGroup>
       <Folder Include="assets" />

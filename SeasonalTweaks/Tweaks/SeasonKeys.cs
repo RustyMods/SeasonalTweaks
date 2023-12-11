@@ -12,9 +12,9 @@ public static class SeasonKeys
     {
         None = 0, 
         Spring = 1, 
-        Summer = 2, 
-        Fall = 4, 
-        Winter = 8
+        Summer = 1 << 1, 
+        Fall = 1 << 2, 
+        Winter = 1 << 3
     }
     public static Seasons season;
 

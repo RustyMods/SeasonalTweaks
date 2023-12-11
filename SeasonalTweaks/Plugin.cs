@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using BepInEx;
+using BepInEx.Bootstrap;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
@@ -15,6 +16,10 @@ using static SeasonalTweaks.Tweaks.SeasonKeys;
 namespace SeasonalTweaks
 {
     [BepInPlugin(ModGUID, ModName, ModVersion)]
+    [BepInDependency("RustyMods.Seasonality", BepInDependency.DependencyFlags.HardDependency)]
+    [BepInDependency("org.bepinex.plugins.foraging", BepInDependency.DependencyFlags.SoftDependency)]
+    [BepInDependency("org.bepinex.plugins.farming", BepInDependency.DependencyFlags.SoftDependency)]
+
     public class SeasonalTweaksPlugin : BaseUnityPlugin
     {
         #region Settings
@@ -36,6 +41,9 @@ namespace SeasonalTweaks
             Off = 0
         }
 
+        public static bool ForagingLoaded;
+        public static bool FarmingLoaded;
+
         public void Awake()
         {
             _serverConfigLocked = config("1 - General", "Lock Configuration", Toggle.On,
@@ -45,7 +53,11 @@ namespace SeasonalTweaks
             InitGeneralConfigs();
             InitPickableConfigs();
             InitDestructibleConfigs();
-            
+            InitBeeHiveConfig();
+
+            if (Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.foraging")) ForagingLoaded = true;
+            if (Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.farming")) FarmingLoaded = true;
+
             Assembly assembly = Assembly.GetExecutingAssembly();
             _harmony.PatchAll(assembly);
             SetupWatcher();
@@ -89,6 +101,7 @@ namespace SeasonalTweaks
         #region Custom Configs
 
         public static ConfigEntry<Toggle> _ModEnabled = null!;
+        public static ConfigEntry<int> _LevelByPass = null!;
         #region Plantables
 
         public static ConfigEntry<Toggle> _TweakFarming = null!;
@@ -190,25 +203,40 @@ namespace SeasonalTweaks
         public static ConfigEntry<Vector4> _GuckSackSmallMaxAmount = null!;
         
         #endregion
+        #region Bee Hive
+
+        public static ConfigEntry<Toggle> _TweakBeeHive = null!;
+        public static ConfigEntry<Seasons> _BeeHiveSeason = null!;
+        public static ConfigEntry<string> _BeeHiveMessage = null!;
+        #endregion
         #endregion
 
+        private void InitBeeHiveConfig()
+        {
+            _TweakBeeHive = config("Bee Hive", "1 - Enable/Disable", Toggle.On, "If on, plugin modifies beehive behavior");
+            _BeeHiveSeason = config("Bee Hive", "Allowed Season",
+                (Seasons)Enum.GetValues(typeof(Seasons)).Cast<int>().Sum() & ~(Seasons.Winter), "Toggle seasons");
+            _BeeHiveMessage = config("Bee Hive", "Not Allowed Message", "Bees do not enjoy this environment",
+                "Message prompted when invalid season");
+            
+        }
         private void InitPickableConfigs()
         {
-            _TweakPickableValues = config("Pickable Values", "1 - Enabled/Disable", Toggle.On, "If on, plugin modifies pickable amount and respawn time");
+            _TweakPickableValues = config("Pickable Values", "1 - Enabled/Disable", Toggle.On, "If on, plugin modifies pickable amount and respawn time, if any values are set to 0, it uses default vanilla values");
             
-            _BarleyWildAmount = config("Pickable Values", "Wild Barley Amount", new Vector4(2, 2, 2, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _BarleyWildAmount = config("Pickable Values", "Wild Barley Amount", new Vector4(2, 3, 2, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _BarleyWildRespawn = config("Pickable Values", "Wild Barley Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
             
-            _FlaxWildAmount = config("Pickable Values", "Wild Flax Amount", new Vector4(2, 2, 2, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _FlaxWildAmount = config("Pickable Values", "Wild Flax Amount", new Vector4(2, 3, 2, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _FlaxWildRespawn = config("Pickable Values", "Wild Flax Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _MushroomAmount = config("Pickable Values", "Mushroom Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _MushroomAmount = config("Pickable Values", "Mushroom Amount", new Vector4(1, 1, 2, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _MushroomRespawn = config("Pickable Values", "Mushroom Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _MushroomBlueAmount = config("Pickable Values", "Blue Mushroom Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _MushroomBlueAmount = config("Pickable Values", "Blue Mushroom Amount", new Vector4(1, 1, 2, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _MushroomBlueRespawn = config("Pickable Values", "Blue Mushroom Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
             
-            _MushroomYellowAmount = config("Pickable Values", "Yellow Mushroom Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _MushroomYellowAmount = config("Pickable Values", "Yellow Mushroom Amount", new Vector4(1, 1, 1, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _MushroomYellowRespawn = config("Pickable Values", "Yellow Mushroom Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
             _JotunPuffsAmount = config("Pickable Values", "Jotun Puffs Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
@@ -217,46 +245,46 @@ namespace SeasonalTweaks
             _MagecapAmount = config("Pickable Values", "Magecap Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _MagecapRespawn = config("Pickable Values", "Magecap Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _RoyalJellyAmount = config("Pickable Values", "Royal Jelly Amount", new Vector4(5, 5, 5, 5), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _RoyalJellyAmount = config("Pickable Values", "Royal Jelly Amount", new Vector4(5, 5, 5, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _RoyalJellyRespawn = config("Pickable Values", "Royal Jelly Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _ThistleAmount = config("Pickable Values", "Thistle Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _ThistleAmount = config("Pickable Values", "Thistle Amount", new Vector4(1, 1, 2, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _ThistleRespawn = config("Pickable Values", "Thistle Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _DandelionAmount = config("Pickable Values", "Dandelion Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _DandelionAmount = config("Pickable Values", "Dandelion Amount", new Vector4(2, 2, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _DandelionRespawn = config("Pickable Values", "Dandelion Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _SeedCarrotAmount = config("Pickable Values", "Carrot Seed Amount", new Vector4(3, 3, 3, 3), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _SeedCarrotAmount = config("Pickable Values", "Carrot Seed Amount", new Vector4(2, 3, 4, 3), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _SeedCarrotRespawn = config("Pickable Values", "Carrot Seed Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _CarrotAmount = config("Pickable Values", "Carrot Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _CarrotAmount = config("Pickable Values", "Carrot Amount", new Vector4(2, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _CarrotRespawn = config("Pickable Values", "Carrot Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _SeedTurnipAmount = config("Pickable Values", "Turnip Seed Amount", new Vector4(2, 2, 2, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _SeedTurnipAmount = config("Pickable Values", "Turnip Seed Amount", new Vector4(2, 3, 4, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _SeedTurnipRespawn = config("Pickable Values", "Turnip Seed Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _TurnipAmount = config("Pickable Values", "Turnip Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _TurnipAmount = config("Pickable Values", "Turnip Amount", new Vector4(2, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _TurnipRespawn = config("Pickable Values", "Turnip Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _SeedOnionAmount = config("Pickable Values", "Onion Seed Amount", new Vector4(3, 3, 3, 3), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _SeedOnionAmount = config("Pickable Values", "Onion Seed Amount", new Vector4(2, 3, 4, 3), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _SeedOnionRespawn = config("Pickable Values", "Onion Seed Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _OnionAmount = config("Pickable Values", "Onion Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _OnionAmount = config("Pickable Values", "Onion Amount", new Vector4(2, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _OnionRespawn = config("Pickable Values", "Onion Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _BarleyAmount = config("Pickable Values", "Barley Amount", new Vector4(2, 2, 2, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _BarleyAmount = config("Pickable Values", "Barley Amount", new Vector4(2, 2, 3, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _BarleyRespawn = config("Pickable Values", "Barley Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _FlaxAmount = config("Pickable Values", "Flax Amount", new Vector4(2, 2, 2, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _FlaxAmount = config("Pickable Values", "Flax Amount", new Vector4(2, 2, 3, 2), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _FlaxRespawn = config("Pickable Values", "Flax Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _RaspberryBushAmount = config("Pickable Values", "Raspberry Bush Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _RaspberryBushAmount = config("Pickable Values", "Raspberry Bush Amount", new Vector4(2, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _RaspberryBushRespawn = config("Pickable Values", "Raspberry Bush Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _BlueberryBushAmount = config("Pickable Values", "Blueberry Bush Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _BlueberryBushAmount = config("Pickable Values", "Blueberry Bush Amount", new Vector4(1, 2, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _BlueberryBushRespawn = config("Pickable Values", "Blueberry Bush Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
-            _CloudberryBushAmount = config("Pickable Values", "Cloudberry Bush Amount", new Vector4(1, 1, 1, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
+            _CloudberryBushAmount = config("Pickable Values", "Cloudberry Bush Amount", new Vector4(1, 1, 2, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _CloudberryBushRespawn = config("Pickable Values", "Cloudberry Bush Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
         }
@@ -264,19 +292,20 @@ namespace SeasonalTweaks
         {
             _TweakDestructibleValues = config("Destructible", "1 - Enable/Disable", Toggle.On,
                 "If on, plugin tweaks destructibles, if value is set to 0, it uses default vanilla values");
-            _GuckSackMinAmount = config("Destructible", "Guck Sack Min", new Vector4(4, 4, 4, 4),
+            _GuckSackMinAmount = config("Destructible", "Guck Sack Min", new Vector4(2, 4, 5, 1),
                 "x: Spring, y: Summer, z: Autumn, w: Winter");
-            _GuckSackMaxAmount = config("Destructible", "Guck Sack Max", new Vector4(7, 7, 7, 7),
+            _GuckSackMaxAmount = config("Destructible", "Guck Sack Max", new Vector4(3, 5, 9, 2),
                 "x: Spring, y: Summer, z: Autumn, w: Winter");
-            _GuckSackSmallMinAmount = config("Destructible", "Guck Sack Small Min", new Vector4(1, 1, 1, 1),
+            _GuckSackSmallMinAmount = config("Destructible", "Guck Sack Small Min", new Vector4(2, 2, 3, 1),
                 "x: Spring, y: Summer, z: Autumn, w: Winter");
-            _GuckSackSmallMaxAmount = config("Destructible", "Guck Sack Small Max", new Vector4(2, 2, 2, 2),
+            _GuckSackSmallMaxAmount = config("Destructible", "Guck Sack Small Max", new Vector4(3, 3, 4, 1),
                 "x: Spring, y: Summer, z: Autumn, w: Winter");
         }
         private void InitGeneralConfigs()
         {
             _ModEnabled = config("1 - General", "Plugin Enabled", Toggle.On,"If on, plugin is enabled, if values set to 0, it uses default vanilla values");
-
+            _LevelByPass = config("1 - General", "Season Ignore Level", 50, new ConfigDescription("Required farming or foraging skill to ignore seasons", new AcceptableValueRange<int>(0, 100)));
+            
             _TweakFarming = config("Farming", "1 - Enable/Disable", Toggle.On, "If on, plugin tweaks farming");
             _FarmingSpring = config("Farming", "Spring",
                 (Farming.PlantTypes)Enum.GetValues(typeof(Farming.PlantTypes)).Cast<int>().Sum(),

@@ -53,22 +53,24 @@ public static class Farming
             PlantTypes type = GetPlantType(__instance.name);
             if (type is PlantTypes.None) return true;
 
+            float farmingLevel = GetSkillLevel.GetFarmingSkillLevel();
+
             switch (season)
             {
                 case Seasons.Spring:
-                    if (_FarmingSpring.Value.HasFlagFast(type)) return true;
+                    if (_FarmingSpring.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value) return true;
                     __instance.m_status = Plant.Status.WrongBiome;
                     return false;
                 case Seasons.Summer:
-                    if (_FarmingSummer.Value.HasFlagFast(type)) return true;
+                    if (_FarmingSummer.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value) return true;
                     __instance.m_status = Plant.Status.WrongBiome;
                     return false;
                 case Seasons.Fall:
-                    if (_FarmingFall.Value.HasFlagFast(type)) return true;
+                    if (_FarmingFall.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value) return true;
                     __instance.m_status = Plant.Status.WrongBiome;
                     return false;
                 case Seasons.Winter:
-                    if (_FarmingWinter.Value.HasFlagFast(type)) return true;
+                    if (_FarmingWinter.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value) return true;
                     __instance.m_status = Plant.Status.WrongBiome;
                     return false;
             }
