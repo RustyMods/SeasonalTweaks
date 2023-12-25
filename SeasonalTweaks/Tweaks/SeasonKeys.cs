@@ -16,7 +16,8 @@ public static class SeasonKeys
         Fall = 1 << 2, 
         Winter = 1 << 3
     }
-    public static Seasons season;
+    public static Seasons season = Seasons.Winter;
+    private static string currentSeason = "season_winter";
 
     [HarmonyPatch(typeof(Player), nameof(Player.UpdateAwake))]
     static class GetSeasonalKeys
@@ -30,13 +31,22 @@ public static class SeasonKeys
             
             List<string>? currentKeys = ZoneSystem.instance.GetGlobalKeys();
             string key = currentKeys.Find(x => x.StartsWith("season"));
-            switch (key)
+            if (currentSeason != key)
             {
-                case "season_winter": season = Seasons.Winter; break;
-                case "season_summer": season = Seasons.Summer; break;
-                case "season_spring": season = Seasons.Spring; break;
-                case "season_fall": season = Seasons.Fall; break;
+                switch (key)
+                {
+                    case "season_winter": season = Seasons.Winter; break;
+                    case "season_summer": season = Seasons.Summer; break;
+                    case "season_spring": season = Seasons.Spring; break;
+                    case "season_fall": season = Seasons.Fall; break;
+                }
+
+                SeasonalItems.UpdateSeasonalPieces();
+                SeasonalItems.UpdateSeasonalItems();
+                SeasonalItems.ModifyHaldorTrader();
+                currentSeason = key;
             }
+            
         }
     }
 }

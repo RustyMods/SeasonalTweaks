@@ -24,7 +24,7 @@ namespace SeasonalTweaks
     {
         #region Settings
         internal const string ModName = "SeasonalTweaks";
-        internal const string ModVersion = "1.0.0";
+        internal const string ModVersion = "1.0.1";
         internal const string Author = "RustyMods";
         private const string ModGUID = Author + "." + ModName;
         private static string ConfigFileName = ModGUID + ".cfg";
@@ -102,6 +102,7 @@ namespace SeasonalTweaks
 
         public static ConfigEntry<Toggle> _ModEnabled = null!;
         public static ConfigEntry<int> _LevelByPass = null!;
+        
         #region Plantables
 
         public static ConfigEntry<Toggle> _TweakFarming = null!;
@@ -304,8 +305,9 @@ namespace SeasonalTweaks
         private void InitGeneralConfigs()
         {
             _ModEnabled = config("1 - General", "Plugin Enabled", Toggle.On,"If on, plugin is enabled, if values set to 0, it uses default vanilla values");
-            _LevelByPass = config("1 - General", "Season Ignore Level", 50, new ConfigDescription("Required farming or foraging skill to ignore seasons", new AcceptableValueRange<int>(0, 100)));
-            
+            _LevelByPass = config("1 - General", "Season Ignore Level", 50,
+                new ConfigDescription("Required farming or foraging skill to ignore seasons", new AcceptableValueRange<int>(0, 100)));
+
             _TweakFarming = config("Farming", "1 - Enable/Disable", Toggle.On, "If on, plugin tweaks farming");
             _FarmingSpring = config("Farming", "Spring",
                 (Farming.PlantTypes)Enum.GetValues(typeof(Farming.PlantTypes)).Cast<int>().Sum(),

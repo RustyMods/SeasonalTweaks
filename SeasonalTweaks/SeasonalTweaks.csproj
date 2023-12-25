@@ -116,6 +116,7 @@
         <Compile Include="Tweaks\Farming.cs" />
         <Compile Include="Tweaks\GetSkill.cs" />
         <Compile Include="Tweaks\Pickables.cs" />
+        <Compile Include="Tweaks\SeasonalItems.cs" />
         <Compile Include="Tweaks\SeasonKeys.cs" />
         <Compile Include="VersionHandshake.cs" />
     </ItemGroup>
