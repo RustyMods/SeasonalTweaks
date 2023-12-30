@@ -6,20 +6,70 @@ namespace SeasonalTweaks.Tweaks;
 
 public static class SeasonalItems
 {
+    private static GameObject Hammer = null!;
+    
+    private static GameObject JackOTurnip = null!;
+    private static GameObject MayPole = null!;
+    private static GameObject XmasCrown = null!;
+    private static GameObject XmasGarland = null!;
+    private static GameObject XmasTree = null!;
+    private static GameObject Gift1 = null!;
+    private static GameObject Gift2 = null!;
+    private static GameObject Gift3 = null!;
+    private static GameObject Mistletoe = null!;
+    
+    private static GameObject HelmetYule = null!;
+    private static GameObject HelmetPointy = null!;
+    private static GameObject HelmetMidsummer = null!;
+    
+    private static GameObject Haldor = null!;
+    
+    private static GameObject HelmetOdin = null!;
+    private static GameObject CapeOdin = null!;
+    private static GameObject TankardOdin = null!;
+    
+    [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Awake))]
+    static class CacheGameObject
+    {
+        private static void Postfix(ZNetScene __instance)
+        {
+            if (!__instance) return;
+            Hammer = __instance.GetPrefab("Hammer");
+            JackOTurnip = __instance.GetPrefab("piece_jackoturnip");
+            MayPole = __instance.GetPrefab("piece_maypole");
+            XmasCrown = __instance.GetPrefab("piece_xmascrown");
+            XmasGarland = __instance.GetPrefab("piece_xmasgarland");
+            XmasTree = __instance.GetPrefab("piece_xmastree");
+            Gift1 = __instance.GetPrefab("piece_gift1");
+            Gift2 = __instance.GetPrefab("piece_gift2");
+            Gift3 = __instance.GetPrefab("piece_gift3");
+            Mistletoe = __instance.GetPrefab("piece_mistletoe");
+            
+            HelmetYule = __instance.GetPrefab("HelmetYule");
+            HelmetPointy = __instance.GetPrefab("HelmetPointyHat");
+            HelmetMidsummer = __instance.GetPrefab("HelmetMidsummerCrown");
+            
+            Haldor = __instance.GetPrefab("Haldor");
+
+            HelmetOdin = __instance.GetPrefab("HelmetOdin");
+            CapeOdin = __instance.GetPrefab("CapeOdin");
+            TankardOdin = __instance.GetPrefab("TankardOdin");
+            
+            HelmetOdin.TryGetComponent(out ItemDrop HelmetOdin_ItemDrop);
+            CapeOdin.TryGetComponent(out ItemDrop CapeOdin_ItemDrop);
+            TankardOdin.TryGetComponent(out ItemDrop TankardOdin_ItemDrop);
+
+            HelmetOdin_ItemDrop.m_itemData.m_shared.m_dlc = "";
+            CapeOdin_ItemDrop.m_itemData.m_shared.m_dlc = "";
+            TankardOdin_ItemDrop.m_itemData.m_shared.m_dlc = "";
+        }
+    }
     public static void UpdateSeasonalPieces()
     {
         if (!ZNetScene.instance) return;
         if (!Player.m_localPlayer) return;
         
-        GameObject JackOTurnip = ZNetScene.instance.GetPrefab("piece_jackoturnip");
-        GameObject MayPole = ZNetScene.instance.GetPrefab("piece_maypole");
-        GameObject XmasCrown = ZNetScene.instance.GetPrefab("piece_xmascrown");
-        GameObject XmasGarland = ZNetScene.instance.GetPrefab("piece_xmasgarland");
-        GameObject XmasTree = ZNetScene.instance.GetPrefab("piece_xmastree");
-        GameObject Gift1 = ZNetScene.instance.GetPrefab("piece_gift1");
-        GameObject Gift2 = ZNetScene.instance.GetPrefab("piece_gift2");
-        GameObject Gift3 = ZNetScene.instance.GetPrefab("piece_gift3");
-        GameObject Mistletoe = ZNetScene.instance.GetPrefab("piece_mistletoe");
+        if (SeasonalTweaksPlugin._SeasonalItems.Value is SeasonalTweaksPlugin.Toggle.Off) return;
 
         JackOTurnip.TryGetComponent(out Piece JackOTurnip_Piece);
         MayPole.TryGetComponent(out Piece MayPole_Piece);
@@ -39,7 +89,7 @@ public static class SeasonalItems
 
         foreach (Piece piece in allPieces) piece.m_enabled = true;
         
-        GameObject Hammer = ZNetScene.instance.GetPrefab("Hammer");
+        
         if (Hammer.TryGetComponent(out ItemDrop HammerItemDrop))
         {
             if (SeasonKeys.season is SeasonKeys.Seasons.Fall)
@@ -132,10 +182,8 @@ public static class SeasonalItems
         if (!Player.m_localPlayer) return;
         if (!ObjectDB.instance) return;
         
-        GameObject HelmetYule = ZNetScene.instance.GetPrefab("HelmetYule");
-        GameObject HelmetPointy = ZNetScene.instance.GetPrefab("HelmetPointyHat");
-        GameObject HelmetMidsummer = ZNetScene.instance.GetPrefab("HelmetMidsummerCrown");
-        
+        if (SeasonalTweaksPlugin._SeasonalItems.Value is SeasonalTweaksPlugin.Toggle.Off) return;
+
         HelmetPointy.TryGetComponent(out ItemDrop HelmetPointy_ItemDrop);
         HelmetMidsummer.TryGetComponent(out ItemDrop HelmetMidsummer_ItemDrop);
         HelmetYule.TryGetComponent(out ItemDrop HelmetYule_ItemDrop);
@@ -168,20 +216,45 @@ public static class SeasonalItems
                 break;
         }
     }
-    
 
+    [HarmonyPatch(typeof(Trader), nameof(Trader.Start))]
+    static class TraderStartPatch
+    {
+        private static void Postfix(Trader __instance)
+        {
+            if (!__instance) return;
+            if (SeasonalTweaksPlugin._SeasonalItems.Value is SeasonalTweaksPlugin.Toggle.Off) return;
+            HelmetYule.TryGetComponent(out ItemDrop HelmetYule_ItemDrop);
+
+            Trader.TradeItem? HelmetYule_TradeItem = __instance.m_items.Find(x => x.m_prefab == HelmetYule_ItemDrop);
+            if (HelmetYule_TradeItem != null)
+            {
+                HelmetYule_TradeItem.m_requiredGlobalKey = "season_winter";
+            }
+            else
+            {
+                HelmetYule_TradeItem = new Trader.TradeItem()
+                {
+                    m_prefab = HelmetYule_ItemDrop,
+                    m_price = 100,
+                    m_stack = 1,
+                    m_requiredGlobalKey = "season_winter"
+                };
+                __instance.m_items.Add(HelmetYule_TradeItem);
+            }
+            
+            UpdateCustomSeasonalItems(__instance);
+        }
+    }
     public static void ModifyHaldorTrader()
     {
         if (!ZNetScene.instance) return;
         if (!Player.m_localPlayer) return;
         if (!ObjectDB.instance) return;
         
-        Debug.LogWarning("modifying haldor");
+        if (SeasonalTweaksPlugin._SeasonalItems.Value is SeasonalTweaksPlugin.Toggle.Off) return;
         
-        GameObject HelmetYule = ZNetScene.instance.GetPrefab("HelmetYule");
         HelmetYule.TryGetComponent(out ItemDrop HelmetYule_ItemDrop);
-
-        GameObject Haldor = ZNetScene.instance.GetPrefab("Haldor");
         if (Haldor.TryGetComponent(out Trader Trader))
         {
             Trader.TradeItem? HelmetYule_TradeItem = Trader.m_items.Find(x => x.m_prefab == HelmetYule_ItemDrop);
@@ -210,10 +283,6 @@ public static class SeasonalItems
         if (!ZNetScene.instance) return;
         if (!Player.m_localPlayer) return;
         if (!ObjectDB.instance) return;
-
-        GameObject HelmetOdin = ZNetScene.instance.GetPrefab("HelmetOdin");
-        GameObject CapeOdin = ZNetScene.instance.GetPrefab("CapeOdin");
-        GameObject TankardOdin = ZNetScene.instance.GetPrefab("TankardOdin");
 
         HelmetOdin.TryGetComponent(out ItemDrop HelmetOdin_ItemDrop);
         CapeOdin.TryGetComponent(out ItemDrop CapeOdin_ItemDrop);

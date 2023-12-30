@@ -17,7 +17,7 @@ public static class SeasonKeys
         Winter = 1 << 3
     }
     public static Seasons season = Seasons.Winter;
-    private static string currentSeason = "season_winter";
+    public static string currentSeason = "season_winter";
 
     [HarmonyPatch(typeof(Player), nameof(Player.UpdateAwake))]
     static class GetSeasonalKeys

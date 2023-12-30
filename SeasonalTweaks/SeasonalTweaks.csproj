@@ -117,7 +117,9 @@
         <Compile Include="Tweaks\GetSkill.cs" />
         <Compile Include="Tweaks\Pickables.cs" />
         <Compile Include="Tweaks\SeasonalItems.cs" />
+        <Compile Include="Tweaks\SeasonalSpawns.cs" />
         <Compile Include="Tweaks\SeasonKeys.cs" />
+        <Compile Include="Tweaks\YamlConfigurations.cs" />
         <Compile Include="VersionHandshake.cs" />
     </ItemGroup>
     <ItemGroup>
@@ -135,6 +137,7 @@
     </ItemGroup>
     <ItemGroup>
         <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.18.2" />
+        <PackageReference Include="YamlDotNet" Version="13.7.1" />
     </ItemGroup>
     <ItemGroup>
       <Folder Include="assets" />

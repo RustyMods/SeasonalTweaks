@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using HarmonyLib;
+using UnityEngine;
 using static SeasonalTweaks.SeasonalTweaksPlugin;
 using static SeasonalTweaks.Tweaks.SeasonKeys;
 
@@ -51,7 +53,10 @@ public static class Farming
             if (!__instance) return false;
             if (_ModEnabled.Value is Toggle.Off || _TweakFarming.Value is Toggle.Off) return true;
             PlantTypes type = GetPlantType(__instance.name);
-            if (type is PlantTypes.None) return true;
+            if (type is PlantTypes.None)
+            {
+                return CheckCustomPrefabs(__instance);
+            }
 
             float farmingLevel = GetSkillLevel.GetFarmingSkillLevel();
 
@@ -76,6 +81,17 @@ public static class Farming
             }
             
             return true;
+        }
+
+        private static bool CheckCustomPrefabs(Plant instance)
+        {
+            string normalizedName = Regex.Replace(instance.name, @"\(.*?\)", "");
+            if (GetSkillLevel.GetFarmingSkillLevel() >= _LevelByPass.Value) return true; // Ignore logic if level is higher than threshold
+            if (!YamlConfigurations.CustomData.TryGetValue(currentSeason, out List<string> currentSeasonalData)) return true;
+
+            if (!currentSeasonalData.Contains(normalizedName)) return true;
+            instance.m_status = Plant.Status.WrongBiome;
+            return false;
         }
     }
 }

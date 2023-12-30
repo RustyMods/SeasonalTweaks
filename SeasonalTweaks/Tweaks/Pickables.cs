@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using HarmonyLib;
+using UnityEngine;
 using static SeasonalTweaks.SeasonalTweaksPlugin;
 
 namespace SeasonalTweaks.Tweaks;
@@ -101,7 +102,10 @@ public static class Pickables
             float farmingLevel = GetSkillLevel.GetFarmingSkillLevel();
             float foragingLevel = GetSkillLevel.GetForagingSkillLevel();
 
-            if (type is PickableTypes.None) return true;
+            if (type is PickableTypes.None)
+            {
+                return CheckCustomData(__instance, character);
+            }
             
             switch (SeasonKeys.season)
             {
@@ -126,6 +130,31 @@ public static class Pickables
             return true;
         }
 
+        private static bool CheckCustomData(Pickable instance, Humanoid character)
+        {
+            string normalizedName = Regex.Replace(instance.name, @"\(.*?\)", "");
+            if (GetSkillLevel.GetFarmingSkillLevel() >= _LevelByPass.Value) return true; // Ignore logic if level is higher than threshold
+            if (GetSkillLevel.GetForagingSkillLevel() >= _LevelByPass.Value) return true;
+            
+            if (!YamlConfigurations.CustomData.TryGetValue(SeasonKeys.currentSeason, out List<string> currentSeasonalData)) return true;
+            if (!currentSeasonalData.Contains(normalizedName)) return true;
+            switch (SeasonKeys.season)
+            {
+                case SeasonKeys.Seasons.Spring:
+                    character.Message(MessageHud.MessageType.Center, _PickSpringMessage.Value);
+                    break;
+                case SeasonKeys.Seasons.Summer:
+                    character.Message(MessageHud.MessageType.Center, _PickSummerMessage.Value);
+                    break;
+                case SeasonKeys.Seasons.Fall:
+                    character.Message(MessageHud.MessageType.Center, _PickFallMessage.Value);
+                    break;
+                case SeasonKeys.Seasons.Winter:
+                    character.Message(MessageHud.MessageType.Center, _PickWinterMessage.Value);
+                    break;
+            }
+            return false;
+        }
         private static bool SetValueByType(PickableTypes type, Pickable __instance, SeasonKeys.Seasons season)
         {
             switch (type)

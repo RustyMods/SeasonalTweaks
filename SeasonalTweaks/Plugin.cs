@@ -54,6 +54,8 @@ namespace SeasonalTweaks
             InitPickableConfigs();
             InitDestructibleConfigs();
             InitBeeHiveConfig();
+            
+            YamlConfigurations.InitYamlConfigurations();
 
             if (Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.foraging")) ForagingLoaded = true;
             if (Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.farming")) FarmingLoaded = true;
@@ -102,7 +104,8 @@ namespace SeasonalTweaks
 
         public static ConfigEntry<Toggle> _ModEnabled = null!;
         public static ConfigEntry<int> _LevelByPass = null!;
-        
+        public static ConfigEntry<Toggle> _SeasonalItems = null!;
+
         #region Plantables
 
         public static ConfigEntry<Toggle> _TweakFarming = null!;
@@ -308,6 +311,9 @@ namespace SeasonalTweaks
             _LevelByPass = config("1 - General", "Season Ignore Level", 50,
                 new ConfigDescription("Required farming or foraging skill to ignore seasons", new AcceptableValueRange<int>(0, 100)));
 
+            _SeasonalItems = config("1 - General", "Seasonal Items", Toggle.Off,
+                "If on, plugin modifies behavior of seasonal items such as Midsummer Crown, Pointy hat and pieces such as JackOLantern and Xmas Tree");
+            
             _TweakFarming = config("Farming", "1 - Enable/Disable", Toggle.On, "If on, plugin tweaks farming");
             _FarmingSpring = config("Farming", "Spring",
                 (Farming.PlantTypes)Enum.GetValues(typeof(Farming.PlantTypes)).Cast<int>().Sum(),
