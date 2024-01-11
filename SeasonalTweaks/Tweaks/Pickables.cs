@@ -132,28 +132,38 @@ public static class Pickables
 
         private static bool CheckCustomData(Pickable instance, Humanoid character)
         {
-            string normalizedName = Regex.Replace(instance.name, @"\(.*?\)", "");
-            if (GetSkillLevel.GetFarmingSkillLevel() >= _LevelByPass.Value) return true; // Ignore logic if level is higher than threshold
-            if (GetSkillLevel.GetForagingSkillLevel() >= _LevelByPass.Value) return true;
-            
-            if (!YamlConfigurations.CustomData.TryGetValue(SeasonKeys.currentSeason, out List<string> currentSeasonalData)) return true;
-            if (!currentSeasonalData.Contains(normalizedName)) return true;
-            switch (SeasonKeys.season)
+            try
             {
-                case SeasonKeys.Seasons.Spring:
-                    character.Message(MessageHud.MessageType.Center, _PickSpringMessage.Value);
-                    break;
-                case SeasonKeys.Seasons.Summer:
-                    character.Message(MessageHud.MessageType.Center, _PickSummerMessage.Value);
-                    break;
-                case SeasonKeys.Seasons.Fall:
-                    character.Message(MessageHud.MessageType.Center, _PickFallMessage.Value);
-                    break;
-                case SeasonKeys.Seasons.Winter:
-                    character.Message(MessageHud.MessageType.Center, _PickWinterMessage.Value);
-                    break;
+                string normalizedName = Regex.Replace(instance.name, @"\(.*?\)", "");
+                if (GetSkillLevel.GetFarmingSkillLevel() >= _LevelByPass.Value)
+                    return true; // Ignore logic if level is higher than threshold
+                if (GetSkillLevel.GetForagingSkillLevel() >= _LevelByPass.Value) return true;
+
+                if (!YamlConfigurations.CustomData.TryGetValue(SeasonKeys.currentSeason,
+                        out List<string> currentSeasonalData)) return true;
+                if (!currentSeasonalData.Contains(normalizedName)) return true;
+                switch (SeasonKeys.season)
+                {
+                    case SeasonKeys.Seasons.Spring:
+                        character.Message(MessageHud.MessageType.Center, _PickSpringMessage.Value);
+                        break;
+                    case SeasonKeys.Seasons.Summer:
+                        character.Message(MessageHud.MessageType.Center, _PickSummerMessage.Value);
+                        break;
+                    case SeasonKeys.Seasons.Fall:
+                        character.Message(MessageHud.MessageType.Center, _PickFallMessage.Value);
+                        break;
+                    case SeasonKeys.Seasons.Winter:
+                        character.Message(MessageHud.MessageType.Center, _PickWinterMessage.Value);
+                        break;
+                }
+
+                return false;
             }
-            return false;
+            catch (Exception)
+            {
+                return true;
+            }
         }
         private static bool SetValueByType(PickableTypes type, Pickable __instance, SeasonKeys.Seasons season)
         {

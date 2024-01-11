@@ -25,7 +25,6 @@ public static class Farming
         JotunPuff = 1 << 8,    // 256
         Magecap = 1 << 9       // 512
     }
-    
     private static PlantTypes GetPlantType(string prefabName)
     {
         string normalizedName = Regex.Replace(prefabName, @"\(.*?\)", "");
@@ -43,6 +42,45 @@ public static class Farming
             "sapling_magecap" => PlantTypes.Magecap,
             _ => PlantTypes.None,
         };
+    }
+    
+    private static bool CheckCustomPrefabs(Plant instance)
+    {
+        try
+        {
+            string normalizedName = Regex.Replace(instance.name, @"\(.*?\)", "");
+            if (GetSkillLevel.GetFarmingSkillLevel() >= _LevelByPass.Value)
+                return true; // Ignore logic if level is higher than threshold
+            if (!YamlConfigurations.CustomData.TryGetValue(currentSeason, out List<string> currentSeasonalData))
+                return true;
+
+            if (!currentSeasonalData.Contains(normalizedName)) return true;
+            instance.m_status = Plant.Status.WrongBiome;
+            return false;
+        }
+        catch (Exception)
+        {
+            return true;
+        }
+    }
+    
+    private static bool CheckCustomPrefabs(Piece instance)
+    {
+        try
+        {
+            string normalizedName = Regex.Replace(instance.name, @"\(.*?\)", "");
+            if (GetSkillLevel.GetFarmingSkillLevel() >= _LevelByPass.Value)
+                return true; // Ignore logic if level is higher than threshold
+            if (!YamlConfigurations.CustomData.TryGetValue(currentSeason, out List<string> currentSeasonalData))
+                return true;
+
+            if (!currentSeasonalData.Contains(normalizedName)) return true;
+            return false;
+        }
+        catch (Exception)
+        {
+            return true;
+        }
     }
 
     [HarmonyPatch(typeof(Plant), nameof(Plant.UpdateHealth))]
@@ -82,16 +120,38 @@ public static class Farming
             
             return true;
         }
+    }
 
-        private static bool CheckCustomPrefabs(Plant instance)
+    [HarmonyPatch(typeof(Player), nameof(Player.PlacePiece))]
+    private static class PlayerPlacePiecePatch
+    {
+        private static bool Prefix(Player __instance, Piece piece)
         {
-            string normalizedName = Regex.Replace(instance.name, @"\(.*?\)", "");
-            if (GetSkillLevel.GetFarmingSkillLevel() >= _LevelByPass.Value) return true; // Ignore logic if level is higher than threshold
-            if (!YamlConfigurations.CustomData.TryGetValue(currentSeason, out List<string> currentSeasonalData)) return true;
-
-            if (!currentSeasonalData.Contains(normalizedName)) return true;
-            instance.m_status = Plant.Status.WrongBiome;
-            return false;
+            if (!__instance || !piece) return false;
+            if (_ModEnabled.Value is Toggle.Off || _TweakFarming.Value is Toggle.Off) return true;
+            PlantTypes type = GetPlantType(piece.name);
+            if (type is PlantTypes.None) return CheckCustomPrefabs(piece);
+            float farmingLevel = GetSkillLevel.GetFarmingSkillLevel();
+            switch (season)
+            {
+                case Seasons.Spring:
+                    if (_FarmingSpring.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value) return true;
+                    __instance.Message(MessageHud.MessageType.Center, _PlantDeniedText.Value);
+                    return false;
+                case Seasons.Summer:
+                    if (_FarmingSummer.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value) return true;
+                    __instance.Message(MessageHud.MessageType.Center, _PlantDeniedText.Value);
+                    return false;
+                case Seasons.Fall:
+                    if (_FarmingFall.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value) return true;
+                    __instance.Message(MessageHud.MessageType.Center, _PlantDeniedText.Value);
+                    return false;
+                case Seasons.Winter:
+                    if (_FarmingWinter.Value.HasFlagFast(type) || farmingLevel >= _LevelByPass.Value) return true;
+                    __instance.Message(MessageHud.MessageType.Center, _PlantDeniedText.Value);
+                    return false;
+            }
+            return true;
         }
     }
 }

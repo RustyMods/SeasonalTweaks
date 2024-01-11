@@ -24,7 +24,7 @@ namespace SeasonalTweaks
     {
         #region Settings
         internal const string ModName = "SeasonalTweaks";
-        internal const string ModVersion = "1.0.1";
+        internal const string ModVersion = "1.0.3";
         internal const string Author = "RustyMods";
         private const string ModGUID = Author + "." + ModName;
         private static string ConfigFileName = ModGUID + ".cfg";
@@ -109,6 +109,8 @@ namespace SeasonalTweaks
         #region Plantables
 
         public static ConfigEntry<Toggle> _TweakFarming = null!;
+        public static ConfigEntry<String> _PlantDeniedText = null!;
+
         public static ConfigEntry<Farming.PlantTypes> _FarmingSpring = null!;
         public static ConfigEntry<Farming.PlantTypes> _FarmingSummer = null!;
         public static ConfigEntry<Farming.PlantTypes> _FarmingFall = null!;
@@ -315,6 +317,8 @@ namespace SeasonalTweaks
                 "If on, plugin modifies behavior of seasonal items such as Midsummer Crown, Pointy hat and pieces such as JackOLantern and Xmas Tree");
             
             _TweakFarming = config("Farming", "1 - Enable/Disable", Toggle.On, "If on, plugin tweaks farming");
+            _PlantDeniedText = config("Farming", "2 - Deny Message", "Not allowed during this season",
+                "Message displayed when trying to plant during wrong season");
             _FarmingSpring = config("Farming", "Spring",
                 (Farming.PlantTypes)Enum.GetValues(typeof(Farming.PlantTypes)).Cast<int>().Sum(),
                 "Toggle allowed plants to grow");
