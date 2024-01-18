@@ -11,6 +11,7 @@ using JetBrains.Annotations;
 using SeasonalTweaks.Tweaks;
 using ServerSync;
 using UnityEngine;
+using UnityEngine.Rendering;
 using static SeasonalTweaks.Tweaks.SeasonKeys;
 
 namespace SeasonalTweaks
@@ -24,7 +25,7 @@ namespace SeasonalTweaks
     {
         #region Settings
         internal const string ModName = "SeasonalTweaks";
-        internal const string ModVersion = "1.0.3";
+        internal const string ModVersion = "1.0.4";
         internal const string Author = "RustyMods";
         private const string ModGUID = Author + "." + ModName;
         private static string ConfigFileName = ModGUID + ".cfg";
@@ -33,13 +34,15 @@ namespace SeasonalTweaks
         private readonly Harmony _harmony = new(ModGUID);
 
         public static readonly ManualLogSource SeasonalTweaksLogger = BepInEx.Logging.Logger.CreateLogSource(ModName);
-        private static readonly ConfigSync ConfigSync = new(ModGUID) { DisplayName = ModName, CurrentVersion = ModVersion, MinimumRequiredVersion = ModVersion };
+        public static readonly ConfigSync ConfigSync = new(ModGUID) { DisplayName = ModName, CurrentVersion = ModVersion, MinimumRequiredVersion = ModVersion };
         #endregion
         public enum Toggle
         {
             On = 1,
             Off = 0
         }
+        public enum WorkingAs { Client, Server, Both }
+        public static WorkingAs workingAsType;
 
         public static bool ForagingLoaded;
         public static bool FarmingLoaded;
@@ -49,6 +52,10 @@ namespace SeasonalTweaks
             _serverConfigLocked = config("1 - General", "Lock Configuration", Toggle.On,
                 "If on, the configuration is locked and can be changed by server admins only.");
             _ = ConfigSync.AddLockingConfigEntry(_serverConfigLocked);
+            
+            workingAsType = SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null
+                ? WorkingAs.Server
+                : WorkingAs.Client;
             
             InitGeneralConfigs();
             InitPickableConfigs();
@@ -63,6 +70,13 @@ namespace SeasonalTweaks
             Assembly assembly = Assembly.GetExecutingAssembly();
             _harmony.PatchAll(assembly);
             SetupWatcher();
+        }
+
+        public void FixedUpdate()
+        {
+            UpdateSeasonalKeys();
+            if (YamlConfigurations.HasRun) return;
+            YamlConfigurations.UpdateSyncedData();
         }
 
         private void OnDestroy()
@@ -105,6 +119,7 @@ namespace SeasonalTweaks
         public static ConfigEntry<Toggle> _ModEnabled = null!;
         public static ConfigEntry<int> _LevelByPass = null!;
         public static ConfigEntry<Toggle> _SeasonalItems = null!;
+        public static ConfigEntry<Toggle> _UseYMLCustomValues = null!;
 
         #region Plantables
 
@@ -122,7 +137,10 @@ namespace SeasonalTweaks
         public static ConfigEntry<Pickables.PickableTypes> _PickSummer = null!;
         public static ConfigEntry<Pickables.PickableTypes> _PickFall = null!;
         public static ConfigEntry<Pickables.PickableTypes> _PickWinter = null!;
-        
+
+        public static ConfigEntry<Toggle> _FishPickableWinter = null!;
+        public static ConfigEntry<string> _FishNotPickableMessage = null!;
+
         #endregion
         #region Messages
 
@@ -207,7 +225,7 @@ namespace SeasonalTweaks
         public static ConfigEntry<Vector4> _GuckSackMaxAmount = null!;
         public static ConfigEntry<Vector4> _GuckSackSmallMinAmount = null!;
         public static ConfigEntry<Vector4> _GuckSackSmallMaxAmount = null!;
-        
+
         #endregion
         #region Bee Hive
 
@@ -293,6 +311,9 @@ namespace SeasonalTweaks
             _CloudberryBushAmount = config("Pickable Values", "Cloudberry Bush Amount", new Vector4(1, 1, 2, 1), "x: Spring, y: Summer, z: Autumn, w: Winter");
             _CloudberryBushRespawn = config("Pickable Values", "Cloudberry Bush Respawn (Minutes)", new Vector4(0, 0, 0, 0), "x: Spring, y: Summer, z: Autumn, w: Winter");
 
+            _FishPickableWinter = config("Fish", "Winter Fish Pickable", Toggle.On, "If on, fish are pickable during winter");
+            _FishNotPickableMessage = config("Fish", "Fish Frozen Message", "Fish too cold to pickup",
+                "Message displayed when fish not pickable during winter");
         }
         private void InitDestructibleConfigs()
         {
@@ -313,9 +334,10 @@ namespace SeasonalTweaks
             _LevelByPass = config("1 - General", "Season Ignore Level", 50,
                 new ConfigDescription("Required farming or foraging skill to ignore seasons", new AcceptableValueRange<int>(0, 100)));
 
+            _UseYMLCustomValues = config("1 - General", "Use YML Custom Values", Toggle.Off,
+                "If on, plugin will use yml custom values file to manipulate pickable values");
             _SeasonalItems = config("1 - General", "Seasonal Items", Toggle.Off,
                 "If on, plugin modifies behavior of seasonal items such as Midsummer Crown, Pointy hat and pieces such as JackOLantern and Xmas Tree");
-            
             _TweakFarming = config("Farming", "1 - Enable/Disable", Toggle.On, "If on, plugin tweaks farming");
             _PlantDeniedText = config("Farming", "2 - Deny Message", "Not allowed during this season",
                 "Message displayed when trying to plant during wrong season");

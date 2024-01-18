@@ -26,32 +26,4 @@ public static class GetSkillLevel
         float level = Player.m_localPlayer.GetSkillLevel(ForagingSkill);
         return level;
     }
-
-    // [HarmonyPatch(typeof(Terminal), nameof(Terminal.Awake))]
-    // static class ConsoleCommandPatch
-    // {
-    //     private static void Postfix()
-    //     {
-    //         Terminal.ConsoleCommand FindSkill = new Terminal.ConsoleCommand("search_skills", "",
-    //             (Terminal.ConsoleEventFailable)(
-    //                 args =>
-    //                 {
-    //                     SeasonalTweaksPlugin.SeasonalTweaksLogger.LogInfo("Search skill results: ");
-    //                     if (args.Length > 1)
-    //                     {
-    //                         var result = (Skills.SkillType)Math.Abs(args[1].GetStableHashCode());
-    //                         var level = Player.m_localPlayer.GetSkillLevel(result);
-    //                         SeasonalTweaksPlugin.SeasonalTweaksLogger.LogInfo(result + " = " + level);
-    //                     }
-    //                     else
-    //                     {
-    //                         foreach (Skills.SkillType skill in Skills.s_allSkills)
-    //                         {
-    //                             SeasonalTweaksPlugin.SeasonalTweaksLogger.LogInfo(skill.ToString());
-    //                         }
-    //                     }
-    //                     return true;
-    //                 }));
-    //     }
-    // }
 }

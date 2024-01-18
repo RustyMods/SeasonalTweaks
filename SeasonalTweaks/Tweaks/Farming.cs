@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using HarmonyLib;
-using UnityEngine;
 using static SeasonalTweaks.SeasonalTweaksPlugin;
 using static SeasonalTweaks.Tweaks.SeasonKeys;
 
@@ -130,7 +129,13 @@ public static class Farming
             if (!__instance || !piece) return false;
             if (_ModEnabled.Value is Toggle.Off || _TweakFarming.Value is Toggle.Off) return true;
             PlantTypes type = GetPlantType(piece.name);
-            if (type is PlantTypes.None) return CheckCustomPrefabs(piece);
+            if (type is PlantTypes.None)
+            {
+                bool flag = CheckCustomPrefabs(piece);
+                if (flag) return true;
+                __instance.Message(MessageHud.MessageType.Center, _PlantDeniedText.Value);
+                return false;
+            }
             float farmingLevel = GetSkillLevel.GetFarmingSkillLevel();
             switch (season)
             {

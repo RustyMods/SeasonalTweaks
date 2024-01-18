@@ -102,11 +102,20 @@ public static class Pickables
             float farmingLevel = GetSkillLevel.GetFarmingSkillLevel();
             float foragingLevel = GetSkillLevel.GetForagingSkillLevel();
 
+
+
             if (type is PickableTypes.None)
             {
-                return CheckCustomData(__instance, character);
+                bool flag = CheckCustomData(__instance, character);
+                
+                if (_UseYMLCustomValues.Value is Toggle.On && flag)
+                {
+                    ModifyPickableValues(__instance);
+                }
+                
+                return flag;
             }
-            
+
             switch (SeasonKeys.season)
             {
                 case SeasonKeys.Seasons.Spring:
@@ -167,6 +176,11 @@ public static class Pickables
         }
         private static bool SetValueByType(PickableTypes type, Pickable __instance, SeasonKeys.Seasons season)
         {
+            if (_UseYMLCustomValues.Value is Toggle.On)
+            {
+                ModifyPickableValues(__instance);
+                return true;
+            }
             switch (type)
             {
                 case PickableTypes.BarleyWild:
@@ -530,6 +544,52 @@ public static class Pickables
             };
 
             return true;
+        }
+
+        private static void ModifyPickableValues(Pickable instance)
+        {
+            if (!instance.m_itemPrefab) return;
+            string name = instance.m_itemPrefab.name;
+            YamlConfigurations.PickableValueConfigurations? data = YamlConfigurations.customPickableData.Find(x => x.prefab_name == name);
+            if (data == null) return;
+            SeasonKeys.Seasons season = SeasonKeys.season;
+            int amount = instance.m_amount;
+            switch (season)
+            {
+                case SeasonKeys.Seasons.Spring:
+                    amount = data.spring_amount;
+                    break;
+                case SeasonKeys.Seasons.Summer:
+                    amount = data.summer_amount;
+                    break;
+                case SeasonKeys.Seasons.Fall:
+                    amount = data.fall_amount;
+                    break;
+                case SeasonKeys.Seasons.Winter:
+                    amount = data.winter_amount;
+                    break;
+            }
+
+            instance.m_amount = amount;
+
+            int respawnTime = instance.m_respawnTimeMinutes;
+            switch (season)
+            {
+                case SeasonKeys.Seasons.Spring:
+                    respawnTime = data.spring_respawn_time;
+                    break;
+                case SeasonKeys.Seasons.Summer:
+                    respawnTime = data.summer_respawn_time;
+                    break;
+                case SeasonKeys.Seasons.Fall:
+                    respawnTime = data.fall_respawn_time;
+                    break;
+                case SeasonKeys.Seasons.Winter:
+                    respawnTime = data.winter_respawn_time;
+                    break;
+            }
+
+            instance.m_respawnTimeMinutes = respawnTime;
         }
     }
 }
