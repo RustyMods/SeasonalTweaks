@@ -114,8 +114,7 @@ public static class YamlConfigurations
             SyncedData.Value = RawRata;
             SyncedValues.Value = RawValues;
         }
-
-        if (!ZNet.instance.IsServer())
+        else
         {
             if (SyncedValues.Value.IsNullOrWhiteSpace()) return;
             IDeserializer deserializer = new DeserializerBuilder().Build();

@@ -25,7 +25,7 @@ namespace SeasonalTweaks
     {
         #region Settings
         internal const string ModName = "SeasonalTweaks";
-        internal const string ModVersion = "1.0.4";
+        internal const string ModVersion = "1.0.5";
         internal const string Author = "RustyMods";
         private const string ModGUID = Author + "." + ModName;
         private static string ConfigFileName = ModGUID + ".cfg";
@@ -73,12 +73,12 @@ namespace SeasonalTweaks
             SetupWatcher();
         }
 
-        public void FixedUpdate()
-        {
-            UpdateSeasonalKeys();
-            if (YamlConfigurations.HasRun) return;
-            YamlConfigurations.UpdateSyncedData();
-        }
+        // public void FixedUpdate()
+        // {
+        //     UpdateSeasonalKeys();
+        //     if (YamlConfigurations.HasRun) return;
+        //     YamlConfigurations.UpdateSyncedData();
+        // }
 
         private void OnDestroy()
         {
