@@ -63,6 +63,7 @@ namespace SeasonalTweaks
             InitBeeHiveConfig();
             
             YamlConfigurations.InitYamlConfigurations();
+            YamlConfigurations.InitCustomFileSystemWatch();
 
             if (Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.foraging")) ForagingLoaded = true;
             if (Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.farming")) FarmingLoaded = true;

@@ -14,7 +14,7 @@ public static class YamlConfigurations
 {
     private static readonly CustomSyncedValue<string> SyncedData = new(SeasonalTweaksPlugin.ConfigSync, "SyncedData", "");
     private static readonly CustomSyncedValue<string> SyncedValues = new(SeasonalTweaksPlugin.ConfigSync, "SyncedValues", "");
-
+    
     private static readonly string folderPath = Paths.ConfigPath + Path.DirectorySeparatorChar + "SeasonalTweaks";
     private static readonly string CustomFilePath = folderPath + Path.DirectorySeparatorChar + "CustomPrefabs.yml";
     private static readonly string CustomValuePath = folderPath + Path.DirectorySeparatorChar + "CustomValues.yml";
@@ -26,6 +26,46 @@ public static class YamlConfigurations
         {"season_fall",new List<string>()},
         {"season_winter",new List<string>()}
     };
+
+    public static void InitCustomFileSystemWatch()
+    {
+        if (SeasonalTweaksPlugin.workingAsType is not SeasonalTweaksPlugin.WorkingAs.Server)
+        {
+            SyncedData.ValueChanged += OnValueChanged;
+            SyncedValues.ValueChanged += OnValueChanged;
+            return;
+        }
+        FileSystemWatcher fileWatcher = new FileSystemWatcher(folderPath)
+        {
+            Filter = "*.yml",
+            EnableRaisingEvents = true,
+            IncludeSubdirectories = true,
+            SynchronizingObject = ThreadingHelper.SynchronizingObject,
+            NotifyFilter = NotifyFilters.LastWrite
+        };
+        fileWatcher.Created += OnChanged;
+        fileWatcher.Changed += OnChanged;
+        fileWatcher.Deleted += OnDeleted;
+    }
+
+    private static void OnValueChanged()
+    {
+        HasRun = false;
+        UpdateSyncedData();
+    }
+
+    private static void OnChanged(object sender, FileSystemEventArgs e)
+    {
+        HasRun = false;
+        UpdateSyncedData();
+    }
+
+    private static void OnDeleted(object sender, FileSystemEventArgs e)
+    {
+        if (e.FullPath != CustomValuePath) return;
+        if (!ZoneSystem.instance) return;
+        GetCustomPlantValues(ZoneSystem.instance);
+    }
     public static void InitYamlConfigurations()
     {
         if (!Directory.Exists(folderPath)) Directory.CreateDirectory(folderPath);
@@ -41,9 +81,9 @@ public static class YamlConfigurations
         
         ReadYamlConfigs();
     }
-
-    private static void GetCustomPlantValues()
+    private static void GetCustomPlantValues(ZoneSystem instance)
     {
+        if (!instance) return;
         if (!File.Exists(CustomValuePath) || customPickableData.Count == 0)
         {
             ISerializer serializer = new SerializerBuilder().Build();
@@ -57,11 +97,7 @@ public static class YamlConfigurations
     [HarmonyPatch(typeof(ZoneSystem), nameof(ZoneSystem.Start))]
     private static class ZoneSystemStartPatch
     {
-        private static void Postfix(ZoneSystem __instance)
-        {
-            if (!__instance) return;
-            GetCustomPlantValues();
-        }
+        private static void Postfix(ZoneSystem __instance) => GetCustomPlantValues(__instance);
     }
 
     public static bool HasRun = false;
@@ -89,7 +125,6 @@ public static class YamlConfigurations
         
         HasRun = true;
     }
-    
     private static void ReadYamlConfigs()
     {
         string RawRata = File.ReadAllText(CustomFilePath);
@@ -154,6 +189,7 @@ public static class YamlConfigurations
     private static readonly HashSet<string> uniquePrefabNames = new();
     private static void GetCustomPlants()
     {
+        customPickableData.Clear();
         GameObject[] AllObjects = Resources.FindObjectsOfTypeAll<GameObject>();
         foreach (GameObject prefab in AllObjects)
         {
