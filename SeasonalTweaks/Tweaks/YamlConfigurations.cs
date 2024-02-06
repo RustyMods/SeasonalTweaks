@@ -5,7 +5,6 @@ using BepInEx;
 using HarmonyLib;
 using ServerSync;
 using UnityEngine;
-using YamlDotNet.Core.Tokens;
 using YamlDotNet.Serialization;
 
 namespace SeasonalTweaks.Tweaks;
@@ -50,14 +49,12 @@ public static class YamlConfigurations
 
     private static void OnValueChanged()
     {
-        HasRun = false;
-        UpdateSyncedData();
+        UpdatedSyncedData = false;
     }
 
     private static void OnChanged(object sender, FileSystemEventArgs e)
     {
-        HasRun = false;
-        UpdateSyncedData();
+        UpdatedSyncedData = false;
     }
 
     private static void OnDeleted(object sender, FileSystemEventArgs e)
@@ -84,7 +81,7 @@ public static class YamlConfigurations
     private static void GetCustomPlantValues(ZoneSystem instance)
     {
         if (!instance) return;
-        if (!File.Exists(CustomValuePath) || customPickableData.Count == 0)
+        if (!File.Exists(CustomValuePath))
         {
             ISerializer serializer = new SerializerBuilder().Build();
 
@@ -97,15 +94,18 @@ public static class YamlConfigurations
     [HarmonyPatch(typeof(ZoneSystem), nameof(ZoneSystem.Start))]
     private static class ZoneSystemStartPatch
     {
-        private static void Postfix(ZoneSystem __instance) => GetCustomPlantValues(__instance);
+        private static void Postfix(ZoneSystem __instance)
+        {
+            if (!__instance) return;
+            GetCustomPlantValues(__instance);
+        }
     }
 
-    public static bool HasRun = false;
+    public static bool UpdatedSyncedData = false;
     public static void UpdateSyncedData()
     {
-        if (!ZNet.instance) return;
-        
-        if (ZNet.instance.IsServer())
+        if (UpdatedSyncedData) return;
+        if (SeasonalTweaksPlugin.workingAsType is SeasonalTweaksPlugin.WorkingAs.Server or SeasonalTweaksPlugin.WorkingAs.Both)
         {
             string RawRata = File.ReadAllText(CustomFilePath);
             string RawValues = File.ReadAllText(CustomValuePath);
@@ -121,15 +121,14 @@ public static class YamlConfigurations
             CustomData = deserializer.Deserialize<Dictionary<string, List<string>>>(SyncedData.Value);
             customPickableData = deserializer.Deserialize<List<PickableValueConfigurations>>(SyncedValues.Value);
         }
-        
-        HasRun = true;
+        UpdatedSyncedData = true;
     }
     private static void ReadYamlConfigs()
     {
-        string RawRata = File.ReadAllText(CustomFilePath);
+        string RawData = File.ReadAllText(CustomFilePath);
         
         IDeserializer deserializer = new DeserializerBuilder().Build();
-        Dictionary<string, List<string>> FarmingData = deserializer.Deserialize<Dictionary<string, List<string>>>(RawRata);
+        Dictionary<string, List<string>> FarmingData = deserializer.Deserialize<Dictionary<string, List<string>>>(RawData);
         CustomData = FarmingData;
         
         if (File.Exists(CustomValuePath))
@@ -185,14 +184,16 @@ public static class YamlConfigurations
     }
 
     public static List<PickableValueConfigurations> customPickableData = new();
-    private static readonly HashSet<string> uniquePrefabNames = new();
+    
     private static void GetCustomPlants()
     {
         customPickableData.Clear();
+        HashSet<string> uniquePrefabNames = new();
         GameObject[] AllObjects = Resources.FindObjectsOfTypeAll<GameObject>();
         foreach (GameObject prefab in AllObjects)
         {
             if (!prefab.TryGetComponent(out Pickable pickable)) continue;
+            if (!pickable.m_itemPrefab) continue;
             if (uniquePrefabNames.Contains(pickable.m_itemPrefab.name)) continue;
             PickableValueConfigurations data = new PickableValueConfigurations()
             {

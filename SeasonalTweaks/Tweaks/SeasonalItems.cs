@@ -101,16 +101,6 @@ public static class SeasonalItems
                 {
                     if (HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Contains(winterPiece)) HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Remove(winterPiece);
                 }
-                
-                // Player.m_localPlayer.AddKnownPiece(JackOTurnip_Piece);
-                // if (Player.m_localPlayer.IsRecipeKnown(MayPole_Piece.m_name)) Player.m_localPlayer.m_knownRecipes.Remove(MayPole_Piece.m_name);
-                // foreach (Piece piece in WinterPieceScripts)
-                // {
-                //     if (Player.m_localPlayer.IsRecipeKnown(piece.m_name))
-                //     {
-                //         Player.m_localPlayer.m_knownRecipes.Remove(piece.m_name);
-                //     }
-                // }
             }
 
             if (SeasonKeys.season is SeasonKeys.Seasons.Winter)
@@ -121,14 +111,6 @@ public static class SeasonalItems
                 }
                 if (HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Contains(JackOTurnip)) HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Remove(JackOTurnip);
                 if (HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Contains(MayPole)) HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Remove(MayPole);
-
-                // foreach (Piece piece in WinterPieceScripts)
-                // {
-                //     Player.m_localPlayer.AddKnownPiece(piece);
-                // }
-                // if (Player.m_localPlayer.IsRecipeKnown(MayPole_Piece.m_name)) Player.m_localPlayer.m_knownRecipes.Remove(MayPole_Piece.m_name);
-                // if (Player.m_localPlayer.IsRecipeKnown(JackOTurnip_Piece.m_name)) Player.m_localPlayer.m_knownRecipes.Remove(JackOTurnip_Piece.m_name);
-
             }
 
             if (SeasonKeys.season is SeasonKeys.Seasons.Summer)
@@ -140,15 +122,6 @@ public static class SeasonalItems
                 {
                     if (HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Contains(winterPiece)) HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Remove(winterPiece);
                 }
-                // Player.m_localPlayer.AddKnownPiece(MayPole_Piece);
-                // if (Player.m_localPlayer.IsRecipeKnown(JackOTurnip_Piece.m_name)) Player.m_localPlayer.m_knownRecipes.Remove(JackOTurnip_Piece.m_name);
-                // foreach (Piece piece in WinterPieceScripts)
-                // {
-                //     if (Player.m_localPlayer.IsRecipeKnown(piece.m_name))
-                //     {
-                //         Player.m_localPlayer.m_knownRecipes.Remove(piece.m_name);
-                //     }
-                // }
             }
 
             if (SeasonKeys.season is SeasonKeys.Seasons.Spring)
@@ -159,16 +132,6 @@ public static class SeasonalItems
                 {
                     if (HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Contains(winterPiece)) HammerItemDrop.m_itemData.m_shared.m_buildPieces.m_pieces.Remove(winterPiece);
                 }
-                
-                // if (Player.m_localPlayer.IsRecipeKnown(MayPole_Piece.m_name)) Player.m_localPlayer.m_knownRecipes.Remove(MayPole_Piece.m_name);
-                // if (Player.m_localPlayer.IsRecipeKnown(JackOTurnip_Piece.m_name)) Player.m_localPlayer.m_knownRecipes.Remove(JackOTurnip_Piece.m_name);
-                // foreach (Piece piece in WinterPieceScripts)
-                // {
-                //     if (Player.m_localPlayer.IsRecipeKnown(piece.m_name))
-                //     {
-                //         Player.m_localPlayer.m_knownRecipes.Remove(piece.m_name);
-                //     }
-                // }
             }
 
             Player.m_localPlayer.UpdateAvailablePiecesList();
@@ -242,8 +205,6 @@ public static class SeasonalItems
                 };
                 __instance.m_items.Add(HelmetYule_TradeItem);
             }
-            
-            UpdateCustomSeasonalItems(__instance);
         }
     }
     public static void ModifyHaldorTrader()
@@ -273,57 +234,7 @@ public static class SeasonalItems
                 };
                 Trader.m_items.Add(HelmetYule_TradeItem);
             }
-            
-            UpdateCustomSeasonalItems(Trader);
         };
     }
-
-    private static void UpdateCustomSeasonalItems(Trader trader)
-    {
-        if (!ZNetScene.instance) return;
-        if (!Player.m_localPlayer) return;
-        if (!ObjectDB.instance) return;
-
-        HelmetOdin.TryGetComponent(out ItemDrop HelmetOdin_ItemDrop);
-        CapeOdin.TryGetComponent(out ItemDrop CapeOdin_ItemDrop);
-        TankardOdin.TryGetComponent(out ItemDrop TankardOdin_ItemDrop);
-
-        HelmetOdin_ItemDrop.m_itemData.m_shared.m_dlc = "";
-        CapeOdin_ItemDrop.m_itemData.m_shared.m_dlc = "";
-        TankardOdin_ItemDrop.m_itemData.m_shared.m_dlc = "";
-
-        Recipe? HelmetOdin_Recipe = ObjectDB.instance.GetRecipe(HelmetOdin_ItemDrop.m_itemData);
-        Recipe? CapeOdin_Recipe = ObjectDB.instance.GetRecipe(CapeOdin_ItemDrop.m_itemData);
-        Recipe? TankardOdin_Recipe = ObjectDB.instance.GetRecipe(TankardOdin_ItemDrop.m_itemData);
-
-        if (HelmetOdin_Recipe) HelmetOdin_Recipe.m_enabled = false;
-        if (CapeOdin_Recipe) CapeOdin_Recipe.m_enabled = false;
-        if (TankardOdin_Recipe) TankardOdin_Recipe.m_enabled = false;
-
-        Trader.TradeItem HelmetOdin_TradeItem = new Trader.TradeItem()
-        {
-            m_prefab = HelmetOdin_ItemDrop,
-            m_stack = 1,
-            m_price = 100,
-            m_requiredGlobalKey = "season_spring"
-        };
-        Trader.TradeItem CapeOdin_TradeItem = new Trader.TradeItem()
-        {
-            m_prefab = CapeOdin_ItemDrop,
-            m_stack = 1,
-            m_price = 100,
-            m_requiredGlobalKey = "season_spring"
-        };
-        Trader.TradeItem TankardOdin_TradeItem = new Trader.TradeItem()
-        {
-            m_prefab = TankardOdin_ItemDrop,
-            m_stack = 1,
-            m_price = 100,
-            m_requiredGlobalKey = "season_spring"
-        };
-        
-        if (trader.m_items.Find(x => x.m_prefab == HelmetOdin_TradeItem.m_prefab) == null) trader.m_items.Add(HelmetOdin_TradeItem);
-        if (trader.m_items.Find(x => x.m_prefab == CapeOdin_TradeItem.m_prefab) == null) trader.m_items.Add(CapeOdin_TradeItem);
-        if (trader.m_items.Find(x => x.m_prefab == TankardOdin_TradeItem.m_prefab) == null) trader.m_items.Add(TankardOdin_TradeItem);
-    }
+    
 }

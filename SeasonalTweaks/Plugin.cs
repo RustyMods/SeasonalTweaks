@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -25,7 +26,7 @@ namespace SeasonalTweaks
     {
         #region Settings
         internal const string ModName = "SeasonalTweaks";
-        internal const string ModVersion = "1.0.5";
+        internal const string ModVersion = "1.0.8";
         internal const string Author = "RustyMods";
         private const string ModGUID = Author + "." + ModName;
         private static string ConfigFileName = ModGUID + ".cfg";
@@ -65,26 +66,33 @@ namespace SeasonalTweaks
             YamlConfigurations.InitYamlConfigurations();
             YamlConfigurations.InitCustomFileSystemWatch();
 
-            if (Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.foraging")) ForagingLoaded = true;
-            if (Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.farming")) FarmingLoaded = true;
+            ForagingLoaded = Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.foraging");
+            FarmingLoaded = Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.farming");
 
             Assembly assembly = Assembly.GetExecutingAssembly();
             _harmony.PatchAll(assembly);
             SetupWatcher();
         }
 
-        // public void FixedUpdate()
-        // {
-        //     UpdateSeasonalKeys();
-        //     if (YamlConfigurations.HasRun) return;
-        //     YamlConfigurations.UpdateSyncedData();
-        // }
+        public void Start()
+        {
+            StartCoroutine(UpdatePlugin());
+        }
+        private IEnumerator UpdatePlugin()
+        {
+            while (true)
+            {
+                UpdateSeasonalKeys();
+                if (YamlConfigurations.UpdatedSyncedData) yield return new WaitForSeconds(10.0f);
+                YamlConfigurations.UpdateSyncedData();
+                yield return new WaitForSeconds(10.0f);
+            }
+        }
 
         private void OnDestroy()
         {
             Config.Save();
         }
-
         private void SetupWatcher()
         {
             FileSystemWatcher watcher = new(Paths.ConfigPath, ConfigFileName);
@@ -95,7 +103,6 @@ namespace SeasonalTweaks
             watcher.SynchronizingObject = ThreadingHelper.SynchronizingObject;
             watcher.EnableRaisingEvents = true;
         }
-
         private void ReadConfigValues(object sender, FileSystemEventArgs e)
         {
             if (!File.Exists(ConfigFileFullPath)) return;
@@ -435,7 +442,6 @@ namespace SeasonalTweaks
             return (value & flag) != 0;
         }
     }
-
     public static class FarmingFlags
     {
         public static bool HasFlagFast(this Farming.PlantTypes value, Farming.PlantTypes flag)
@@ -443,7 +449,6 @@ namespace SeasonalTweaks
             return (value & flag) != 0;
         }
     }
-
     public static class PickableFlags
     {
         public static bool HasFlagFast(this Pickables.PickableTypes value, Pickables.PickableTypes flag)
