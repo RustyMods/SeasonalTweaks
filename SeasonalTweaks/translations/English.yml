@@ -1,0 +1,12 @@
+localization_file: ""
+spring_cannot_grow: "Unable to grow"
+summer_cannot_grow: "Unable to grow"
+fall_cannot_grow: "Unable to grow"
+winter_cannot_grow: "Unable to grow"
+
+spring_cannot_pick: "Cannot forage"
+summer_cannot_pick: "Cannot forage"
+fall_cannot_pick: "Cannot forage"
+winter_cannot_pick: "Cannot forage"
+
+winter_cannot_pick_fish: "Cannot pick up"

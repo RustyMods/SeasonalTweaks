@@ -109,17 +109,18 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
+        <Compile Include="Managers\BeehiveManager.cs" />
+        <Compile Include="Managers\ConfigManager.cs" />
+        <Compile Include="Managers\FishManager.cs" />
+        <Compile Include="Managers\ItemManager.cs" />
+        <Compile Include="Managers\LocalizationManager.cs" />
+        <Compile Include="Managers\PickableManager.cs" />
+        <Compile Include="Managers\PieceManager.cs" />
+        <Compile Include="Managers\PlantManager.cs" />
+        <Compile Include="Managers\SeasonKeys.cs" />
+        <Compile Include="Managers\SkillManager.cs" />
         <Compile Include="Plugin.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
-        <Compile Include="Tweaks\BeeHivePatch.cs" />
-        <Compile Include="Tweaks\Destructible.cs" />
-        <Compile Include="Tweaks\Farming.cs" />
-        <Compile Include="Tweaks\Fish.cs" />
-        <Compile Include="Tweaks\GetSkill.cs" />
-        <Compile Include="Tweaks\Pickables.cs" />
-        <Compile Include="Tweaks\SeasonalItems.cs" />
-        <Compile Include="Tweaks\SeasonKeys.cs" />
-        <Compile Include="Tweaks\YamlConfigurations.cs" />
         <Compile Include="VersionHandshake.cs" />
     </ItemGroup>
     <ItemGroup>
@@ -132,6 +133,7 @@
         <Content Include="Libs\ServerSync.dll">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
+        <EmbeddedResource Include="translations\English.yml" />
         <Content Include="UpdateManifest.ps1" />
     </ItemGroup>
     <ItemGroup>
