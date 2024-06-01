@@ -1,67 +1,82 @@
-﻿using System;
+﻿
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text.RegularExpressions;
+using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
+using ServerSync;
 using UnityEngine;
+using YamlDotNet.Serialization;
 using static SeasonalTweaks.SeasonalTweaksPlugin;
 
 namespace SeasonalTweaks.Managers;
 
 public static class ConfigManager
 {
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<Toggle>>> m_pickable = new();
+    private static readonly string m_folderPath = Paths.ConfigPath + Path.DirectorySeparatorChar + "SeasonalTweaks";
+    private static readonly string m_filePath = m_folderPath + Path.DirectorySeparatorChar + "configurations.yml";
 
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<int>>>
-        m_pickableAmounts = new();
-
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<Toggle>>> m_plants = new();
-
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<float>>>
-        m_plantMaxScale = new();
-
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<float>>>
-        m_plantMinScale = new();
-
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<float>>> m_plantGrowMax = new();
-
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<float>>> m_plantGrowthTime =
-        new();
+    public static ConfigEntry<float> m_farmingOverride = null!;
+    public static ConfigEntry<float> m_foragingOverride = null!;
+    public static ConfigEntry<Toggle> m_fishOverride = null!;
     
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<Toggle>>> m_beehives = new();
+    public static ConfigEntry<Toggle> m_enabled = null!;
+    
+    public static Configurations m_config = new();
 
-    public static readonly Dictionary<string, Dictionary<SeasonKeys.Season, ConfigEntry<int>>> m_beehive_maxHoney =
-        new();
+    private static readonly CustomSyncedValue<string> m_serverSyncConfigs =
+        new(SeasonalTweaksPlugin.ConfigSync, "SeasonalTweaks_ServerSync_Configurations", "");
 
-    public static readonly Dictionary<string, ConfigEntry<int>> m_pickableForagingOverride = new();
-    public static readonly Dictionary<string, ConfigEntry<int>> m_pickableFarmingOverride = new();
-    public static readonly Dictionary<string, ConfigEntry<int>> m_plantForagingOverride = new();
-    public static readonly Dictionary<string, ConfigEntry<int>> m_plantFarmingOverride = new();
-
-    public static readonly Dictionary<string, ConfigEntry<SeasonKeys.Season>> m_pieces = new();
-    public static readonly Dictionary<string, ConfigEntry<SeasonKeys.Season>> m_items = new();
-    public static readonly Dictionary<string, ConfigEntry<int>> m_itemPrices = new();
-
-    public static ConfigEntry<Toggle> WinterFish = null!;
-
-    [HarmonyPatch(typeof(ZNetScene), nameof(ZNetScene.Awake))]
-    private static class Register_Configurations
+    public static readonly Dictionary<string, SeasonKeys.Season> m_seasonalPieces = new Dictionary<string, SeasonKeys.Season>()
     {
-        private static void Postfix(ZNetScene __instance)
+        { "piece_xmascrown", SeasonKeys.Season.Winter },
+        { "piece_xmastree", SeasonKeys.Season.Winter },
+        { "piece_xmasgarland", SeasonKeys.Season.Winter },
+        { "piece_mistletoe", SeasonKeys.Season.Winter },
+        { "piece_maypole", SeasonKeys.Season.Summer },
+        { "piece_jackoturnip", SeasonKeys.Season.Fall },
+        { "piece_gift1", SeasonKeys.Season.Winter},
+        { "piece_gift2", SeasonKeys.Season.Winter},
+        { "piece_gift3", SeasonKeys.Season.Winter}
+    };
+
+    public static void CreateDirectories()
+    {
+        if (!Directory.Exists(m_folderPath)) Directory.CreateDirectory(m_folderPath);
+    }
+
+    public static void InitStaticConfigs()
+    {
+        m_enabled = _plugin.config("1 - General", "Enabled", Toggle.On, "If on, plugin is enabled");
+        m_farmingOverride = _plugin.config("Settings", "Farming Override", 50f,
+            new ConfigDescription("Set the level required for seasons to be overridden",
+                new AcceptableValueRange<float>(0f, 101f)));
+        m_foragingOverride = _plugin.config("Settings", "Foraging Override", 50f,
+            new ConfigDescription("Set the level required for seasons to be overridden",
+                new AcceptableValueRange<float>(0f, 101f)));
+        m_fishOverride = _plugin.config("Fish", "Winter Interactable", Toggle.Off,
+            "If on, fish are interactable during winter");
+    }
+
+    private static bool m_readFile;
+
+    public static void ReadConfigFile()
+    {
+        if (!File.Exists(m_filePath)) return;
+        SeasonalTweaksLogger.LogDebug("Reading config file");
+        try
         {
-            if (!__instance) return;
-
-            foreach (var prefab in __instance.m_prefabs)
-            {
-                CreatePickableConfigs(prefab);
-                CreatePlantConfigs(prefab);
-                CreateBeehiveConfigs(prefab);
-                CreatePieceConfigs(prefab);
-            }
-
-            WinterFish = _plugin.config("Fish", "Winter Interactable", Toggle.Off,
-                "If on, fish are interactable during winter");
+            var deserializer = new DeserializerBuilder().Build();
+            var file = File.ReadAllText(m_filePath);
+            var data = deserializer.Deserialize<Configurations>(file);
+            m_config = data;
+            if (ZNet.instance && ZNet.instance.IsServer()) m_serverSyncConfigs.Value = file;
+            m_readFile = true;
+        }
+        catch
+        {
+            SeasonalTweaksLogger.LogWarning("Failed to deserialize configurations YML");
         }
     }
 
@@ -71,175 +86,187 @@ public static class ConfigManager
         private static void Postfix(ObjectDB __instance)
         {
             if (!__instance || !ZNetScene.instance) return;
-            CreateItemConfigs(__instance);
-        }
-    }
 
-    private static void CreatePickableConfigs(GameObject prefab)
-    {
-        if (prefab.TryGetComponent(out Pickable pickable))
-        {
-            if (!pickable.m_itemPrefab) return;
-            if (!pickable.m_itemPrefab.TryGetComponent(out ItemDrop itemDrop)) return;
-            if (itemDrop.m_itemData.m_shared.m_itemType is not ItemDrop.ItemData.ItemType.Consumable) return;
-
-            var map = new Dictionary<SeasonKeys.Season, ConfigEntry<Toggle>>();
-            var amounts = new Dictionary<SeasonKeys.Season, ConfigEntry<int>>();
-            
-            ConfigEntry<int> foragingOverride = _plugin.config(pickable.name, "Foraging Override", 50,
-                new ConfigDescription($"Set the level required to override the seasons",
-                    new AcceptableValueRange<int>(0, 101)));
-            ConfigEntry<int> farmingOverride = _plugin.config(pickable.name, "Farming Override", 50,
-                new ConfigDescription($"Set the level required to override the seasons",
-                    new AcceptableValueRange<int>(0, 101)));
-            m_pickableForagingOverride[pickable.name] = foragingOverride;
-            m_pickableFarmingOverride[pickable.name] = farmingOverride;
-            foreach (SeasonKeys.Season season in Enum.GetValues(typeof(SeasonKeys.Season)))
+            var hammer = __instance.GetItemPrefab("Hammer");
+            if (hammer)
             {
-                if (season is SeasonKeys.Season.None) continue;
-                ConfigEntry<int> amount = _plugin.config(pickable.name, $"{(int)season} - {season} Amount",
-                    pickable.m_amount, new ConfigDescription($"Set the amount of items harvested during {season}", new AcceptableValueRange<int>(0, 101)));
-                amounts[season] = amount;
-                
-                ConfigEntry<Toggle> interactable = _plugin.config(pickable.name, $"{(int)season} - {season} Interactable", Toggle.On, $"If on, {pickable.name} is harvestable during {season}");
-                map[season] = interactable;
+                if (hammer.TryGetComponent(out ItemDrop component))
+                {
+                    foreach (var kvp in m_seasonalPieces)
+                    {
+                        var prefab = ZNetScene.instance.GetPrefab(kvp.Key);
+                        if (!prefab) continue;
+                        if (component.m_itemData.m_shared.m_buildPieces.m_pieces.Contains(prefab)) continue;
+                        component.m_itemData.m_shared.m_buildPieces.m_pieces.Add(prefab);
+                    }
+                }
                 
             }
-            m_pickable[pickable.name] = map;
-            m_pickableAmounts[pickable.name] = amounts;
-        }
-    }
-
-    private static void CreatePlantConfigs(GameObject prefab)
-    {
-        if (prefab.TryGetComponent(out Plant plant))
-        {
-            var map = new Dictionary<SeasonKeys.Season, ConfigEntry<Toggle>>();
-            var maxScales = new Dictionary<SeasonKeys.Season, ConfigEntry<float>>();
-            var minScales = new Dictionary<SeasonKeys.Season, ConfigEntry<float>>();
-            var growthChange = new Dictionary<SeasonKeys.Season, ConfigEntry<float>>();
-            var growthMax = new Dictionary<SeasonKeys.Season, ConfigEntry<float>>();
-
-            ConfigEntry<int> foragingOverride = _plugin.config(plant.name, "Foraging Override", 50,
-                new ConfigDescription("Set the level required to override the seasons",
-                    new AcceptableValueRange<int>(0, 101)));
-            ConfigEntry<int> farmingOverride = _plugin.config(plant.name, "Farming Override", 50,
-                new ConfigDescription("Set the level required to override the seasons",
-                    new AcceptableValueRange<int>(0, 101)));
-            m_plantForagingOverride[plant.name] = foragingOverride;
-            m_plantFarmingOverride[plant.name] = farmingOverride;
             
-            ConfigEntry<Toggle> destroyIfCantGrow =
-                _plugin.config(plant.name, "Destroy If Cannot Grow",
-                    Toggle.Off,
-                    $"If on, {plant.name} will be destroyed if it cannot grow");
-            destroyIfCantGrow.SettingChanged += OnPlantDestroyChange;
+            if (File.Exists(m_filePath) && m_readFile) return;
+            SeasonalTweaksLogger.LogDebug("Creating config file");
+            var serializer = new SerializerBuilder().Build();
+            Configurations configs = new();
 
-            foreach (SeasonKeys.Season season in Enum.GetValues(typeof(SeasonKeys.Season)))
+            foreach (var prefab in ZNetScene.instance.m_prefabs)
             {
-                if (season is SeasonKeys.Season.None) continue;
-                ConfigEntry<float> growTime = _plugin.config(plant.name,
-                    $"{(int)season} - {season} Grow Time", plant.m_growTime,
-                    new ConfigDescription($"Set the growth time of {plant.name} during {season}",
-                        new AcceptableValueRange<float>(0f, 10000f)));
-                growthChange[season] = growTime;
-
-                ConfigEntry<float> growMax = _plugin.config(plant.name, $"{(int)season} - {season} Grow Time Max",
-                    plant.m_growTimeMax,
-                    new ConfigDescription($"Set the max growth time of {plant.name} during {season}",
-                        new AcceptableValueRange<float>(0, 10000f)));
-
-                ConfigEntry<Toggle> grows =
-                    _plugin.config(plant.name, $"{(int)season} - {season} Grows",
-                        Toggle.On, $"If on, {plant.name} is harvestable during {season}");
-                map[season] = grows;
-
-                ConfigEntry<float> minScale = _plugin.config(plant.name, $"{(int)season} - {season} Min Scale",
-                    plant.m_minScale, new ConfigDescription($"Set the minimum scale of plant during {season}", new AcceptableValueRange<float>(0f, 10f)));
-                minScales[season] = minScale;
-
-                ConfigEntry<float> maxScale = _plugin.config(plant.name, $"{(int)season} - {season} Max Scale",
-                    plant.m_maxScale, new ConfigDescription($"Set the maximum scale of plant during {season}", new AcceptableValueRange<float>(0f, 10f)));
-                maxScales[season] = maxScale;
+                if (CreatePickableConfigs(prefab, out PickableData pickableData))
+                {
+                    configs.Pickable.Add(pickableData);
+                }
+                if (CreatePlantConfigs(prefab, out PlantData plantData))
+                {
+                    configs.Plants.Add(plantData);
+                }
+                if (CreateBeehiveConfigs(prefab, out BeeHiveData beehiveData))
+                {
+                    configs.Beehives.Add(beehiveData);
+                }
+                if (CreatePieceConfigs(prefab, out PieceData pieceData))
+                {
+                    configs.Pieces.Add(pieceData);
+                }
             }
 
-            m_plants[plant.name] = map;
-            m_plantMinScale[plant.name] = minScales;
-            m_plantMaxScale[plant.name] = maxScales;
-            m_plantGrowthTime[plant.name] = growthChange;
-            m_plantGrowMax[plant.name] = growthMax;
-        }
-    }
-
-    private static void CreateBeehiveConfigs(GameObject prefab)
-    {
-        if (prefab.TryGetComponent(out Beehive beehive))
-        {
-            Dictionary<SeasonKeys.Season, ConfigEntry<Toggle>> map = new();
-            Dictionary<SeasonKeys.Season, ConfigEntry<int>> honey = new();
-                    
-            foreach (SeasonKeys.Season season in Enum.GetValues(typeof(SeasonKeys.Season)))
+            foreach (var recipe in __instance.m_recipes.Where(x => x != null && !x.m_enabled && x.m_item != null))
             {
-                if (season is SeasonKeys.Season.None) continue;
-                ConfigEntry<Toggle> interactable = _plugin.config(beehive.name, $"{(int)season} - {season} Interactable",
-                    Toggle.On, $"If on, {beehive.name} is harvestable during {season}");
-                map[season] = interactable;
-
-                ConfigEntry<int> maxHoney = _plugin.config(beehive.name, $"{(int)season} - {season} Max Honey",
-                    beehive.m_maxHoney,
-                    new ConfigDescription($"Set the maximum amount of honey produced during {season}",
-                        new AcceptableValueRange<int>(0, 101)));
-                honey[season] = maxHoney;
+                if (CreateItemConfigs(recipe, out ItemData itemData))
+                {
+                    configs.Items.Add(itemData);
+                }
             }
-
-            m_beehives[beehive.name] = map;
-            m_beehive_maxHoney[beehive.name] = honey;
+            configs.Items.Add(new ItemData(){m_prefabName = "QueenBee", m_price = 999, m_season = SeasonKeys.Season.Summer});
+            m_config = configs;
+            var data = serializer.Serialize(configs);
+            if (ZNet.instance && ZNet.instance.IsServer()) m_serverSyncConfigs.Value = data;
+            if (!File.Exists(m_filePath)) File.WriteAllText(m_filePath, data);
         }
     }
 
-    private static void CreatePieceConfigs(GameObject prefab)
+    private static bool CreatePickableConfigs(GameObject prefab, out PickableData data)
     {
-        if (prefab.TryGetComponent(out Piece piece))
+        data = new ();
+        if (!prefab.TryGetComponent(out Pickable pickable)) return false;
+        if (!pickable.m_itemPrefab) return false;
+        if (!pickable.m_itemPrefab.TryGetComponent(out ItemDrop itemDrop)) return false;
+        if (itemDrop.m_itemData.m_shared.m_itemType is not ItemDrop.ItemData.ItemType.Consumable) return false;
+
+        data.m_prefabName = pickable.name;
+        data.m_spring.m_amount = pickable.m_amount;
+        data.m_summer.m_amount = pickable.m_amount;
+        data.m_fall.m_amount = pickable.m_amount;
+        data.m_winter.m_amount = pickable.m_amount;
+        data.m_winter.m_canHarvest = false;
+        return true;
+
+    }
+
+    private static bool CreatePlantConfigs(GameObject prefab, out PlantData data)
+    {
+        data = new();
+        if (!prefab.TryGetComponent(out Plant plant)) return false;
+        data.m_prefabName = plant.name;
+
+        data.m_spring.m_growTime = plant.m_growTime;
+        data.m_spring.m_growTimeMax = plant.m_growTimeMax;
+        data.m_spring.m_minScale = plant.m_minScale;
+        data.m_spring.m_maxScale = plant.m_maxScale;
+
+        data.m_summer.m_growTime = plant.m_growTime;
+        data.m_summer.m_growTimeMax = plant.m_growTimeMax;
+        data.m_summer.m_minScale = plant.m_minScale;
+        data.m_summer.m_maxScale = plant.m_maxScale;
+        
+        data.m_fall.m_growTime = plant.m_growTime;
+        data.m_fall.m_growTimeMax = plant.m_growTimeMax;
+        data.m_fall.m_minScale = plant.m_minScale;
+        data.m_fall.m_maxScale = plant.m_maxScale;
+        
+        data.m_winter.m_growTime = plant.m_growTime;
+        data.m_winter.m_growTimeMax = plant.m_growTimeMax;
+        data.m_winter.m_minScale = plant.m_minScale;
+        data.m_winter.m_maxScale = plant.m_maxScale;
+        data.m_winter.m_canHarvest = false;
+        
+        return true;
+
+    }
+
+    private static bool CreateBeehiveConfigs(GameObject prefab, out BeeHiveData data)
+    {
+        data = new();
+        if (!prefab.TryGetComponent(out Beehive beehive)) return false;
+        data.m_prefabName = beehive.name;
+        data.m_spring.m_maxHoney = beehive.m_maxHoney;
+        data.m_summer.m_maxHoney = beehive.m_maxHoney;
+        data.m_fall.m_maxHoney = beehive.m_maxHoney;
+        data.m_winter.m_maxHoney = beehive.m_maxHoney;
+        data.m_winter.m_canHarvest = false;
+        return true;
+
+    }
+
+    private static bool CreatePieceConfigs(GameObject prefab, out PieceData data)
+    {
+        data = new();
+        if (!prefab.TryGetComponent(out Piece piece)) return false;
+        if (!m_seasonalPieces.TryGetValue(prefab.name, out SeasonKeys.Season season)) return false;
+        data.m_prefabName = piece.name;
+        data.m_season = season;
+        return true;
+
+    }
+
+    private static bool CreateItemConfigs(Recipe recipe, out ItemData data)
+    {
+        data = new();
+        if (recipe.m_item.name.StartsWith("Armor")) return false;
+        if (recipe.m_item.name.StartsWith("HelmetHat")) return false;
+        if (recipe.m_item.m_itemData.m_shared.m_itemType 
+            is ItemDrop.ItemData.ItemType.Consumable 
+            or ItemDrop.ItemData.ItemType.Shield 
+            or ItemDrop.ItemData.ItemType.Torch) return false;
+
+        data.m_prefabName = recipe.m_item.name;
+        return true;
+    }
+
+    public static void StartFileWatch()
+    {
+        FileSystemWatcher watcher = new FileSystemWatcher(m_folderPath, "*.yml")
         {
-            if (piece.enabled) return;
-            ConfigEntry<SeasonKeys.Season> active = _plugin.config(piece.name, "Available",
-                SeasonKeys.Season.Summer, "Set the season which makes the piece available");
-            m_pieces[piece.name] = active;
-        }
+            EnableRaisingEvents = true,
+            IncludeSubdirectories = false,
+            SynchronizingObject = ThreadingHelper.SynchronizingObject
+        };
+        watcher.Created += OnConfigurationChange;
+        watcher.Changed += OnConfigurationChange;
+        watcher.Deleted += OnConfigurationChange;
     }
 
-    private static void CreateItemConfigs(ObjectDB __instance)
+    private static void OnConfigurationChange(object sender, FileSystemEventArgs e)
     {
-        foreach (var recipe in __instance.m_recipes.Where(x => x != null && !x.m_enabled && x.m_item != null))
+        if (!ZNet.instance) return;
+        if (!File.Exists(m_filePath)) return;
+        SeasonalTweaksLogger.LogDebug("Read configurations called");
+        if (!ZNet.instance.IsServer())
         {
-            if (recipe.m_item.name.StartsWith("Armor")) continue;
-            if (recipe.m_item.name.StartsWith("HelmetHat")) continue;
-            if (recipe.m_item.m_itemData.m_shared.m_itemType is ItemDrop.ItemData.ItemType.Consumable) continue;
-            if (recipe.m_item.m_itemData.m_shared.m_itemType is ItemDrop.ItemData.ItemType.Shield) continue;
-            if (recipe.m_item.m_itemData.m_shared.m_itemType is ItemDrop.ItemData.ItemType.Torch) continue;
-            
-            ConfigEntry<SeasonKeys.Season> enabled = _plugin.config(recipe.m_item.name, "Available",
-                SeasonKeys.Season.Summer, "Set the season which makes the item available");
-            m_items[recipe.m_item.name] = enabled;
-            ConfigEntry<int> price = _plugin.config(recipe.m_item.name, "Haldor Price", 1000, "Set price for item");
-            m_itemPrices[recipe.m_item.name] = price;
+            SeasonalTweaksLogger.LogDebug("Canceled, user is not server");
+            return;
         }
-
-        m_items["QueenBee"] = _plugin.config("QueenBee", "Available", SeasonKeys.Season.Summer,
-            "Set the season which makes the item available");
-        m_itemPrices["QueenBee"] = _plugin.config("QueenBee", "Haldor Price", 1000, "Set the price for the item");
+        
+        ReadConfigFile();
     }
-
-    private static void OnPlantDestroyChange(object sender, EventArgs e)
+    public static void StartServerConfigurationWatcher()
     {
-        if (!ZNetScene.instance) return;
-        if (sender is not ConfigEntry<Toggle> config) return;
-        var name = config.Definition.Section;
-        var prefab = ZNetScene.instance.GetPrefab(name);
-        if (!prefab) return;
-        if (!prefab.TryGetComponent(out Plant plant)) return;
-        plant.m_destroyIfCantGrow = config.Value is Toggle.On;
+        m_serverSyncConfigs.ValueChanged += () =>
+        {
+            if (m_serverSyncConfigs.Value.IsNullOrWhiteSpace()) return;
+            SeasonalTweaksLogger.LogDebug("Server configurations read called");
+            var deserializer = new DeserializerBuilder().Build();
+            var data = deserializer.Deserialize<Configurations>(m_serverSyncConfigs.Value);
+            m_config = data;
+        };
     }
-    
     
 }

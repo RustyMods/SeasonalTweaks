@@ -111,6 +111,7 @@
     <ItemGroup>
         <Compile Include="Managers\BeehiveManager.cs" />
         <Compile Include="Managers\ConfigManager.cs" />
+        <Compile Include="Managers\Data.cs" />
         <Compile Include="Managers\FishManager.cs" />
         <Compile Include="Managers\ItemManager.cs" />
         <Compile Include="Managers\LocalizationManager.cs" />

@@ -22,7 +22,7 @@ namespace SeasonalTweaks
     public class SeasonalTweaksPlugin : BaseUnityPlugin
     {
         internal const string ModName = "SeasonalTweaks";
-        internal const string ModVersion = "1.1.1";
+        internal const string ModVersion = "1.1.2";
         internal const string Author = "RustyMods";
         private const string ModGUID = Author + "." + ModName;
         private static string ConfigFileName = ModGUID + ".cfg";
@@ -48,10 +48,15 @@ namespace SeasonalTweaks
             FarmingLoaded = Chainloader.PluginInfos.ContainsKey("org.bepinex.plugins.farming");
             
             InitConfigs();
+            ConfigManager.CreateDirectories();
+            ConfigManager.InitStaticConfigs();
+            ConfigManager.ReadConfigFile();
 
             Assembly assembly = Assembly.GetExecutingAssembly();
             _harmony.PatchAll(assembly);
             SetupWatcher();
+            ConfigManager.StartServerConfigurationWatcher();
+            ConfigManager.StartFileWatch();
         }
 
         public void Update()

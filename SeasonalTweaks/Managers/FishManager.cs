@@ -11,7 +11,7 @@ public static class FishManager
         private static bool Prefix(Fish __instance)
         {
             if (SeasonKeys.m_currentSeason is not SeasonKeys.Season.Winter) return true;
-            return ConfigManager.WinterFish.Value is SeasonalTweaksPlugin.Toggle.On;
+            return ConfigManager.m_fishOverride.Value is SeasonalTweaksPlugin.Toggle.On;
         }
     }
 
@@ -21,7 +21,7 @@ public static class FishManager
         private static void Postfix(ref string __result)
         {
             if (SeasonKeys.m_currentSeason is not SeasonKeys.Season.Winter) return;
-            if (ConfigManager.WinterFish.Value is SeasonalTweaksPlugin.Toggle.Off) return;
+            if (ConfigManager.m_fishOverride.Value is SeasonalTweaksPlugin.Toggle.Off) return;
             __result += "\n $winter_cannot_pick_fish";
 
         }

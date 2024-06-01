@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-using BepInEx.Configuration;
-using HarmonyLib;
+﻿using HarmonyLib;
 
 namespace SeasonalTweaks.Managers;
 
@@ -11,37 +9,37 @@ public static class PickableManager
     {
         private static bool Prefix(Pickable __instance)
         {
-            if (!ConfigManager.m_pickable.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                    out Dictionary<SeasonKeys.Season, ConfigEntry<SeasonalTweaksPlugin.Toggle>> configs)) return true;
-            if (!configs.TryGetValue(SeasonKeys.m_currentSeason, out ConfigEntry<SeasonalTweaksPlugin.Toggle> config))
-                return true;
+            if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return true;
+            if (!HasConfigs(__instance.name.Replace("(Clone)", string.Empty))) return true;
 
             if (SeasonalTweaksPlugin.ForagingLoaded)
             {
-                if (!ConfigManager.m_pickableForagingOverride.TryGetValue(__instance.name.Replace("(Clone)",string.Empty), out ConfigEntry<int> foragingOverride)) return true;
-
-                if (SkillManager.GetForagingSkillLevel() > foragingOverride.Value) return true;
+                if (ConfigManager.m_foragingOverride.Value > SkillManager.GetForagingSkillLevel()) return true;
             }
 
             if (SeasonalTweaksPlugin.FarmingLoaded)
             {
-                if (!ConfigManager.m_pickableFarmingOverride.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                        out ConfigEntry<int> farmingOverride)) return true;
-                if (SkillManager.GetFarmingSkillLevel() > farmingOverride.Value) return true;
+                if (ConfigManager.m_farmingOverride.Value > SkillManager.GetFarmingSkillLevel()) return true;
             }
 
-            if (config.Value is SeasonalTweaksPlugin.Toggle.Off) return false;
-
-            if (ConfigManager.m_pickableAmounts.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                    out Dictionary<SeasonKeys.Season, ConfigEntry<int>> amounts))
+            var data = GetData(__instance.name.Replace("(Clone)", string.Empty));
+            __instance.m_amount = SeasonKeys.m_currentSeason switch
             {
-                if (amounts.TryGetValue(SeasonKeys.m_currentSeason, out ConfigEntry<int> amount))
-                {
-                    __instance.m_amount = amount.Value;
-                }
-            }
-            return true;
-
+                SeasonKeys.Season.Spring => data.m_spring.m_amount,
+                SeasonKeys.Season.Summer => data.m_summer.m_amount,
+                SeasonKeys.Season.Fall => data.m_fall.m_amount,
+                SeasonKeys.Season.Winter => data.m_winter.m_amount,
+                _ => __instance.m_amount
+            };
+            
+            return SeasonKeys.m_currentSeason switch
+            {
+                SeasonKeys.Season.Spring => data.m_spring.m_canHarvest,
+                SeasonKeys.Season.Summer => data.m_summer.m_canHarvest,
+                SeasonKeys.Season.Fall => data.m_fall.m_canHarvest,
+                SeasonKeys.Season.Winter => data.m_winter.m_canHarvest,
+                _ => true,
+            };
         }
     }
 
@@ -50,37 +48,44 @@ public static class PickableManager
     {
         private static void Postfix(Pickable __instance, ref string __result)
         {
-            if (!ConfigManager.m_pickable.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                    out Dictionary<SeasonKeys.Season, ConfigEntry<SeasonalTweaksPlugin.Toggle>> configs)) return;
-            if (!configs.TryGetValue(SeasonKeys.m_currentSeason, out ConfigEntry<SeasonalTweaksPlugin.Toggle> config))
-                return;
-            
+            if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return;
+            if (!HasConfigs(__instance.name.Replace("(Clone)", string.Empty))) return;
             if (SeasonalTweaksPlugin.ForagingLoaded)
             {
-                if (!ConfigManager.m_pickableForagingOverride.TryGetValue(__instance.name.Replace("(Clone)",string.Empty), out ConfigEntry<int> foragingOverride)) return;
-
-                if (SkillManager.GetForagingSkillLevel() > foragingOverride.Value) return;
+                if (ConfigManager.m_foragingOverride.Value > SkillManager.GetForagingSkillLevel()) return;
             }
 
             if (SeasonalTweaksPlugin.FarmingLoaded)
             {
-                if (!ConfigManager.m_pickableFarmingOverride.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                        out ConfigEntry<int> farmingOverride)) return;
-                if (SkillManager.GetFarmingSkillLevel() > farmingOverride.Value) return;
+                if (ConfigManager.m_farmingOverride.Value > SkillManager.GetFarmingSkillLevel()) return;
             }
 
-            if (config.Value is SeasonalTweaksPlugin.Toggle.Off)
-            {
-                __result += Localization.instance.Localize(SeasonKeys.m_currentSeason switch
-                {
-                    SeasonKeys.Season.Spring => "\n <color=red>$spring_cannot_pick",
-                    SeasonKeys.Season.Summer => "\n <color=red>$summer_cannot_pick",
-                    SeasonKeys.Season.Fall => "\n <color=red>$fall_cannot_pick",
-                    SeasonKeys.Season.Winter => "\n <color=red>$winter_cannot_pick",
-                    _ => ""
+            var data = GetData(__instance.name.Replace("(Clone)", string.Empty));
 
-                });
+            switch (SeasonKeys.m_currentSeason)
+            {
+                case SeasonKeys.Season.Spring:
+                    if (data.m_spring.m_canHarvest) return;
+                    __result += Localization.instance.Localize("\n <color=red>$spring_cannot_pick");
+                    break;
+                case SeasonKeys.Season.Summer:
+                    if (data.m_summer.m_canHarvest) return;
+                    __result += Localization.instance.Localize("\n <color=red>$summer_cannot_pick");
+                    break;
+                case SeasonKeys.Season.Fall:
+                    if (data.m_fall.m_canHarvest) return;
+                    __result += Localization.instance.Localize("\n <color=red>$fall_cannot_pick");
+                    break;
+                case SeasonKeys.Season.Winter:
+                    if (data.m_winter.m_canHarvest) return;
+                    __result += Localization.instance.Localize("\n <color=red>$winter_cannot_pick");
+                    break;
             }
         }
     }
+
+    private static bool HasConfigs(string prefabName) =>
+        ConfigManager.m_config.Pickable.Exists(x => x.m_prefabName == prefabName);
+    private static PickableData GetData(string prefabName) => ConfigManager.m_config.Pickable.Find(x => x.m_prefabName == prefabName);
+    
 }

@@ -12,70 +12,72 @@ public static class PlantManager
     {
         private static bool Prefix(Plant __instance)
         {
-            if (!ConfigManager.m_plants.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                    out Dictionary<Season, ConfigEntry<SeasonalTweaksPlugin.Toggle>> configs)) return true;
-            if (!configs.TryGetValue(m_currentSeason, out ConfigEntry<SeasonalTweaksPlugin.Toggle> config))
-                return true;
+            if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return true;
+            string prefabName = __instance.name.Replace("(Clone)",string.Empty);
+            if (!HasConfigs(prefabName)) return true;
+            var data = GetData(prefabName);
+            if (SeasonalTweaksPlugin.FarmingLoaded)
+            {
+                if (SkillManager.GetFarmingSkillLevel() > ConfigManager.m_farmingOverride.Value) return true;
+            }
 
             if (SeasonalTweaksPlugin.ForagingLoaded)
             {
-                if (!ConfigManager.m_plantForagingOverride.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                        out ConfigEntry<int> foragingOverride)) return true;
-                if (foragingOverride.Value < SkillManager.GetForagingSkillLevel()) return true;
+                if (SkillManager.GetForagingSkillLevel() > ConfigManager.m_foragingOverride.Value) return true;
             }
 
-            if (SeasonalTweaksPlugin.FarmingLoaded)
+            return m_currentSeason switch
             {
-                if (!ConfigManager.m_plantFarmingOverride.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                        out ConfigEntry<int> farmingOverride)) return true;
-                if (farmingOverride.Value < SkillManager.GetFarmingSkillLevel()) return true;
-            }
-
-            return config.Value is SeasonalTweaksPlugin.Toggle.On;
+                Season.Spring => data.m_spring.m_canHarvest,
+                Season.Summer => data.m_summer.m_canHarvest,
+                Season.Fall => data.m_fall.m_canHarvest,
+                Season.Winter => data.m_winter.m_canHarvest,
+                _ => true,
+            };
         }
     }
 
+    private static bool HasConfigs(string prefabName) =>
+        ConfigManager.m_config.Plants.Exists(x => x.m_prefabName == prefabName);
+    private static PlantData GetData(string prefabName) => ConfigManager.m_config.Plants.Find(x => x.m_prefabName == prefabName);
+    
     [HarmonyPatch(typeof(Plant), nameof(Plant.GetStatus))]
     private static class Plant_GetStatus_Postfix
     {
         private static void Postfix(Plant __instance, ref Plant.Status __result)
         {
-            if (!ConfigManager.m_plants.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                    out Dictionary<Season, ConfigEntry<SeasonalTweaksPlugin.Toggle>> configs)) return;
-            if (!configs.TryGetValue(m_currentSeason, out ConfigEntry<SeasonalTweaksPlugin.Toggle> config))
-                return;
-            
-            if (SeasonalTweaksPlugin.ForagingLoaded)
-            {
-                if (!ConfigManager.m_plantForagingOverride.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                        out ConfigEntry<int> foragingOverride)) return;
-                if (foragingOverride.Value < SkillManager.GetForagingSkillLevel()) return;
-            }
-
+            if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return;
+            string prefabName = __instance.name.Replace("(Clone)",string.Empty);
+            if (!HasConfigs(prefabName)) return;
+            var data = GetData(prefabName);
             if (SeasonalTweaksPlugin.FarmingLoaded)
             {
-                if (!ConfigManager.m_plantFarmingOverride.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                        out ConfigEntry<int> farmingOverride)) return;
-                if (farmingOverride.Value < SkillManager.GetFarmingSkillLevel()) return;
+                if (SkillManager.GetFarmingSkillLevel() > ConfigManager.m_farmingOverride.Value) return;
             }
 
-            if (config.Value is SeasonalTweaksPlugin.Toggle.Off)
+            if (SeasonalTweaksPlugin.ForagingLoaded)
             {
-                switch (m_currentSeason)
-                {
-                    case Season.Spring:
-                        __result = Plant.Status.NoSpace;
-                        break;
-                    case Season.Summer:
-                        __result = Plant.Status.TooHot;
-                        break;
-                    case Season.Fall:
-                        __result = Plant.Status.NotCultivated;
-                        break;
-                    case Season.Winter:
-                        __result = Plant.Status.TooCold;
-                        break;
-                }
+                if (SkillManager.GetForagingSkillLevel() > ConfigManager.m_foragingOverride.Value) return;
+            }
+            
+            switch (m_currentSeason)
+            {
+                case Season.Spring:
+                    if (data.m_spring.m_canHarvest) return;
+                    __result = Plant.Status.NoSpace;
+                    break;
+                case Season.Summer:
+                    if (data.m_summer.m_canHarvest) return;
+                    __result = Plant.Status.TooHot;
+                    break;
+                case Season.Fall:
+                    if (data.m_fall.m_canHarvest) return;
+                    __result = Plant.Status.NotCultivated;
+                    break;
+                case Season.Winter:
+                    if (data.m_winter.m_canHarvest) return;
+                    __result = Plant.Status.TooCold;
+                    break;
             }
         }
     }
@@ -85,36 +87,38 @@ public static class PlantManager
     {
         private static void Postfix(Plant __instance, ref string __result)
         {
-            if (!ConfigManager.m_plants.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                    out Dictionary<Season, ConfigEntry<SeasonalTweaksPlugin.Toggle>> configs)) return;
-            if (!configs.TryGetValue(m_currentSeason, out ConfigEntry<SeasonalTweaksPlugin.Toggle> config))
-                return;
-            
-            if (SeasonalTweaksPlugin.ForagingLoaded)
-            {
-                if (!ConfigManager.m_plantForagingOverride.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                        out ConfigEntry<int> foragingOverride)) return;
-                if (foragingOverride.Value < SkillManager.GetForagingSkillLevel()) return;
-            }
-
+            if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return;
+            string prefabName = __instance.name.Replace("(Clone)",string.Empty);
+            if (!HasConfigs(prefabName)) return;
+            var data = GetData(prefabName);
             if (SeasonalTweaksPlugin.FarmingLoaded)
             {
-                if (!ConfigManager.m_plantFarmingOverride.TryGetValue(__instance.name.Replace("(Clone)",string.Empty),
-                        out ConfigEntry<int> farmingOverride)) return;
-                if (farmingOverride.Value < SkillManager.GetFarmingSkillLevel()) return;
+                if (SkillManager.GetFarmingSkillLevel() > ConfigManager.m_farmingOverride.Value) return;
             }
 
-            if (config.Value is SeasonalTweaksPlugin.Toggle.Off)
+            if (SeasonalTweaksPlugin.ForagingLoaded)
             {
-                __result += Localization.instance.Localize(m_currentSeason switch
-                {
-                    Season.Spring => "\n <color=red>$spring_cannot_grow",
-                    Season.Summer => "\n <color=red>$summer_cannot_grow",
-                    Season.Fall => "\n <color=red>$fall_cannot_grow",
-                    Season.Winter => "\n <color=red>$winter_cannot_grow",
-                    _ => ""
+                if (SkillManager.GetForagingSkillLevel() > ConfigManager.m_foragingOverride.Value) return;
+            }
 
-                });
+            switch (SeasonKeys.m_currentSeason)
+            {
+                case Season.Spring:
+                    if (data.m_spring.m_canHarvest) return;
+                    __result += Localization.instance.Localize("\n <color=red>$spring_cannot_grow");
+                    break;
+                case Season.Summer:
+                    if (data.m_summer.m_canHarvest) return;
+                    __result += Localization.instance.Localize("\n <color=red>$summer_cannot_grow");
+                    break;
+                case Season.Fall :
+                    if (data.m_fall.m_canHarvest) return;
+                    __result += Localization.instance.Localize("\n <color=red>$fall_cannot_grow");
+                    break;
+                case Season.Winter:
+                    if (data.m_winter.m_canHarvest) return;
+                    __result += Localization.instance.Localize("\n <color=red>$winter_cannot_grow");
+                    break;
             }
         }
     }
@@ -124,41 +128,33 @@ public static class PlantManager
     {
         private static void Postfix(Plant __instance)
         {
-            if (ConfigManager.m_plantMaxScale.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                    out Dictionary<Season, ConfigEntry<float>> maxScales))
+            if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return;
+            string prefabName = __instance.name.Replace("(Clone)",string.Empty);
+            if (!HasConfigs(prefabName)) return;
+            var data = GetData(prefabName);
+            PlantValues? values = null;
+            switch (SeasonKeys.m_currentSeason)
             {
-                if (maxScales.TryGetValue(m_currentSeason, out ConfigEntry<float> max))
-                {
-                    __instance.m_maxScale = max.Value;
-                }
+                case Season.Spring:
+                    values = data.m_spring;
+                    break;
+                case Season.Summer:
+                    values = data.m_summer;
+                    break;
+                case Season.Fall:
+                    values = data.m_fall;
+                    break;
+                case Season.Winter:
+                    values = data.m_winter;
+                    break;
             }
 
-            if (ConfigManager.m_plantMinScale.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                    out Dictionary<Season, ConfigEntry<float>> minScales))
-            {
-                if (minScales.TryGetValue(m_currentSeason, out ConfigEntry<float> min))
-                {
-                    __instance.m_minScale = min.Value;
-                }
-            }
-
-            if (ConfigManager.m_plantGrowthTime.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                    out Dictionary<Season, ConfigEntry<float>> times))
-            {
-                if (times.TryGetValue(m_currentSeason, out ConfigEntry<float> time))
-                {
-                    __instance.m_growTime = time.Value;
-                }
-            }
-
-            if (ConfigManager.m_plantGrowMax.TryGetValue(__instance.name.Replace("(Clone)", string.Empty),
-                    out Dictionary<Season, ConfigEntry<float>> growMax))
-            {
-                if (growMax.TryGetValue(m_currentSeason, out ConfigEntry<float> max))
-                {
-                    __instance.m_growTimeMax = max.Value;
-                }
-            }
+            if (values == null) return;
+            
+            __instance.m_maxScale = values.m_maxScale;
+            __instance.m_minScale = values.m_minScale;
+            __instance.m_growTimeMax = values.m_growTimeMax;
+            __instance.m_growTime = values.m_growTime;
         }
     }
 }

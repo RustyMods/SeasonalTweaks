@@ -10,3 +10,5 @@ fall_cannot_pick: "Cannot forage"
 winter_cannot_pick: "Cannot forage"
 
 winter_cannot_pick_fish: "Cannot pick up"
+
+msg_cannot_interact: "Invalid season"
