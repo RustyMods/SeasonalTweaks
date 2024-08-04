@@ -16,15 +16,7 @@ public static class PlantManager
             string prefabName = __instance.name.Replace("(Clone)",string.Empty);
             if (!HasConfigs(prefabName)) return true;
             var data = GetData(prefabName);
-            if (SeasonalTweaksPlugin.FarmingLoaded)
-            {
-                if (SkillManager.GetFarmingSkillLevel() > ConfigManager.m_farmingOverride.Value) return true;
-            }
-
-            if (SeasonalTweaksPlugin.ForagingLoaded)
-            {
-                if (SkillManager.GetForagingSkillLevel() > ConfigManager.m_foragingOverride.Value) return true;
-            }
+            if (SkillManager.HasOverrideLevel()) return true;
 
             return m_currentSeason switch
             {
@@ -50,15 +42,7 @@ public static class PlantManager
             string prefabName = __instance.name.Replace("(Clone)",string.Empty);
             if (!HasConfigs(prefabName)) return;
             var data = GetData(prefabName);
-            if (SeasonalTweaksPlugin.FarmingLoaded)
-            {
-                if (SkillManager.GetFarmingSkillLevel() > ConfigManager.m_farmingOverride.Value) return;
-            }
-
-            if (SeasonalTweaksPlugin.ForagingLoaded)
-            {
-                if (SkillManager.GetForagingSkillLevel() > ConfigManager.m_foragingOverride.Value) return;
-            }
+            if (SkillManager.HasOverrideLevel()) return;
             
             switch (m_currentSeason)
             {
@@ -90,16 +74,8 @@ public static class PlantManager
             if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return;
             string prefabName = __instance.name.Replace("(Clone)",string.Empty);
             if (!HasConfigs(prefabName)) return;
-            var data = GetData(prefabName);
-            if (SeasonalTweaksPlugin.FarmingLoaded)
-            {
-                if (SkillManager.GetFarmingSkillLevel() > ConfigManager.m_farmingOverride.Value) return;
-            }
-
-            if (SeasonalTweaksPlugin.ForagingLoaded)
-            {
-                if (SkillManager.GetForagingSkillLevel() > ConfigManager.m_foragingOverride.Value) return;
-            }
+            PlantData data = GetData(prefabName);
+            if (SkillManager.HasOverrideLevel()) return;
 
             switch (SeasonKeys.m_currentSeason)
             {
@@ -131,7 +107,7 @@ public static class PlantManager
             if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return;
             string prefabName = __instance.name.Replace("(Clone)",string.Empty);
             if (!HasConfigs(prefabName)) return;
-            var data = GetData(prefabName);
+            PlantData data = GetData(prefabName);
             PlantValues? values = null;
             switch (SeasonKeys.m_currentSeason)
             {

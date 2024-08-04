@@ -12,17 +12,9 @@ public static class PickableManager
             if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return true;
             if (!HasConfigs(__instance.name.Replace("(Clone)", string.Empty))) return true;
 
-            if (SeasonalTweaksPlugin.ForagingLoaded)
-            {
-                if (ConfigManager.m_foragingOverride.Value > SkillManager.GetForagingSkillLevel()) return true;
-            }
+            if (SkillManager.HasOverrideLevel()) return true;
 
-            if (SeasonalTweaksPlugin.FarmingLoaded)
-            {
-                if (ConfigManager.m_farmingOverride.Value > SkillManager.GetFarmingSkillLevel()) return true;
-            }
-
-            var data = GetData(__instance.name.Replace("(Clone)", string.Empty));
+            PickableData data = GetData(__instance.name.Replace("(Clone)", string.Empty));
             __instance.m_amount = SeasonKeys.m_currentSeason switch
             {
                 SeasonKeys.Season.Spring => data.m_spring.m_amount,
@@ -50,17 +42,9 @@ public static class PickableManager
         {
             if (ConfigManager.m_enabled.Value is SeasonalTweaksPlugin.Toggle.Off) return;
             if (!HasConfigs(__instance.name.Replace("(Clone)", string.Empty))) return;
-            if (SeasonalTweaksPlugin.ForagingLoaded)
-            {
-                if (ConfigManager.m_foragingOverride.Value > SkillManager.GetForagingSkillLevel()) return;
-            }
+            if (SkillManager.HasOverrideLevel()) return;
 
-            if (SeasonalTweaksPlugin.FarmingLoaded)
-            {
-                if (ConfigManager.m_farmingOverride.Value > SkillManager.GetFarmingSkillLevel()) return;
-            }
-
-            var data = GetData(__instance.name.Replace("(Clone)", string.Empty));
+            PickableData data = GetData(__instance.name.Replace("(Clone)", string.Empty));
 
             switch (SeasonKeys.m_currentSeason)
             {

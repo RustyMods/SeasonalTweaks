@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.IO;
 using System.Reflection;
 using BepInEx;
@@ -22,7 +21,7 @@ namespace SeasonalTweaks
     public class SeasonalTweaksPlugin : BaseUnityPlugin
     {
         internal const string ModName = "SeasonalTweaks";
-        internal const string ModVersion = "1.1.2";
+        internal const string ModVersion = "1.1.5";
         internal const string Author = "RustyMods";
         private const string ModGUID = Author + "." + ModName;
         private static string ConfigFileName = ModGUID + ".cfg";
